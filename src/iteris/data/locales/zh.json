@@ -1,0 +1,80 @@
+{
+  "strings": {
+    "monitor_title": "Iteris Monitor",
+    "choose_title": "请选择",
+    "lang_prompt": "请选择界面语言 / Choose language",
+    "lang_option_zh": "1. 中文",
+    "lang_option_en": "2. English",
+    "lang_input": "请输入 1 或 2 / Enter 1 or 2 > ",
+    "lang_invalid": "请输入 1（中文）或 2（English）/ Enter 1 for Chinese or 2 for English.",
+    "thinking": "思考中，请稍候...",
+    "menu_input": "请输入数字 1-4，或直接描述需求 > ",
+    "freeform_hint": "请输入 1-4，或直接输入您的问题；exit 退出。",
+    "wizard_start": "开始创建新的数学项目（分步引导）",
+    "monitor_reply_title": "Monitor",
+    "exit_words": ["exit", "quit", "q", "退出"],
+    "welcome_title": "欢迎使用 Iteris Monitor",
+    "outside_hint": "您当前不在 Iteris 项目目录中。建议按下面菜单选择；也可以直接输入问题。",
+    "first_use_heading": "── 第一次使用？──",
+    "outside_quick_help": "需要时我可以帮您检查环境、创建新项目、继续已有项目，或先解释 Iteris。",
+    "in_project_hint": "请选择您现在要做的事：",
+    "menu_heading": "── 菜单 ──",
+    "menu_footer": "输入菜单数字 1-4，或直接描述您的需求。\nEnter 1-4, or describe what you need.\n输入 exit / quit 退出 / Type exit or quit to leave.",
+    "project_label": "当前项目",
+    "path_label": "路径",
+    "source_label": "题目文件",
+    "target_label": "目标产物",
+    "evolve_goal_label": "Evolve 目标",
+    "executor_label": "Agent 后端",
+    "executor_env_hint": "（环境变量 ITERIS_EXECUTOR）",
+    "wizard_title": "新建项目向导",
+    "wizard_intro": "我们会分步收集信息，创建项目，并可选立即启动 iteris run。",
+    "wizard_dir": "项目目录（不存在会自动创建）",
+    "wizard_problem": "题目：输入文件路径，或直接粘贴题目文字（空行结束粘贴）",
+    "wizard_paste_hint": "请粘贴题目内容，输入空行结束：",
+    "wizard_refs": "参考资料路径（逗号分隔，可留空）",
+    "wizard_arxiv": "arXiv ID 或链接（逗号分隔，可留空）",
+    "wizard_notes": "给 operator 的简短说明（可留空）",
+    "wizard_run_now": "是否立即启动 iteris run？",
+    "wizard_confirm_create": "确认现在创建这个项目？",
+    "wizard_creating": "正在创建项目...",
+    "wizard_fetch_arxiv": "正在获取 arXiv 文献 {arxiv_id}...",
+    "wizard_done_title": "项目已就绪",
+    "wizard_run_started": "已在后台启动 iteris run（tmux）。可用 iteris dashboard 查看。",
+    "wizard_run_skipped": "项目已创建。之后可在项目目录中继续使用 iteris monitor，请它帮你检查状态或启动运行：{path}",
+    "wizard_cancelled": "已取消向导。",
+    "wizard_error": "创建项目失败：{error}"
+  },
+  "opening_messages": {
+    "none": "用户在 Iteris 项目目录外启动了 iteris monitor。请简短回应，并询问用户是想让你检查安装环境、引导创建新项目、继续已有项目，还是先了解 Iteris。",
+    "single": "用户在一个单项目 Iteris 工作区中。请先基于 lookup 和项目文件简短汇报项目当前进展，再用一个轻量问题询问是否继续一起讨论下一步。",
+    "family_root": "用户在 evolve 家族根项目中。请先基于 lookup、EVOLVE 摘要和 family memory 汇报数学推进概貌，再用一个轻量问题询问是否继续一起讨论决策。",
+    "family_child": "用户在 evolve 子项目中。请先基于 lookup 和家族上下文汇报本节点数学进展，再用一个轻量问题询问是否继续讨论细节或下一步。"
+  },
+  "menu": {
+    "none": [
+      ["1", "第一次使用：安装与环境检查", "我是第一次使用 Iteris。请先判断当前环境是否适合开始，并询问我是否要你执行只读环境检查；不要只给我一串命令。"],
+      ["2", "创建新项目", "我想创建一个新的 Iteris 项目。请先询问缺失信息，例如项目目录、题目来源、参考资料、arXiv ID 和备注；在创建文件或启动 run 前必须先向我确认。"],
+      ["3", "继续已有项目", "我已经有一个 Iteris 项目目录。请先询问项目路径；拿到路径后你来做只读检查，不要要求我先切目录或执行命令，然后判断下一步该查看状态、恢复运行还是打开 dashboard。"],
+      ["4", "了解 Iteris", "请用非技术人员也能懂的话简短介绍 Iteris，并问我接下来更想了解单项目 run、evolve 家族，还是新建项目。"]
+    ],
+    "single": [
+      ["1", "查看当前项目进度", "请先根据 lookup 和可读项目文件总结这个项目数学上推进到哪里、当前结果/目标产物是什么、还有什么明显阻塞；最后用一个轻量问题问我是否继续一起讨论下一步。"],
+      ["2", "启动或恢复运行", "我想启动或恢复 iteris run。请先根据 status 判断是否需要 recover，然后问我是否同意你执行相应操作。"],
+      ["3", "打开 dashboard", "我想看运行细节。请先判断当前是否需要 dashboard，问我是否要你启动 dashboard；如果你能先做只读检查，也请提出。"],
+      ["4", "了解项目目录", "请简短解释本项目最重要的目录，并问我想让你进一步查看 source、facts/tasks、results，还是运行日志。"]
+    ],
+    "family_root": [
+      ["1", "查看 evolve 家族状态", "我是 evolve 家族根项目的负责人。请先根据 lookup、EVOLVE 摘要和 family memory 总结数学上推进到什么程度：已有实质结论、活跃方向、明确边界/失败路径，以及 budget/节点状态；最后用一个轻量问题问我是否继续一起讨论下一步决策。"],
+      ["2", "启动或管理 evolve 调度", "我想启动或了解 evolve supervisor。请先判断 supervisor 是否需要启动、停止或保持，然后问我是否同意你执行对应操作。"],
+      ["3", "查看 worker 子项目", "请先根据 lookup 判断哪些 worker 在跑、哪些 slot 空闲，然后问我想让你检查异常 worker、选择下一个 worker，还是恢复某个节点。"],
+      ["4", "打开 dashboard", "我想看实时运行细节。请先判断是否需要 dashboard，并问我是否要你启动 dashboard 或先做只读状态检查。"]
+    ],
+    "family_child": [
+      ["1", "查看本节点进度与状态", "请先优先读取 status.math_progress.generalization、evolve_status.current_child 和可读项目文件，总结本节点数学上推进到哪里、与家族目标的关系、当前 target/phase 和明显阻塞；最后用一个轻量问题问我是否继续一起讨论细节或下一步。"],
+      ["2", "启动或恢复本节点", "我想启动或恢复本项目的 agent 运行。请先判断应该 run 还是 recover，然后问我是否同意你执行。"],
+      ["3", "了解家族上下文", "请结合 evolve lookup 简短解释本节点在家族中的位置，然后问我想看根项目目标、父方向，还是兄弟节点对比。"],
+      ["4", "打开 dashboard", "请先判断从本节点还是家族根打开 dashboard 更合适，并问我是否要你启动。"]
+    ]
+  }
+}

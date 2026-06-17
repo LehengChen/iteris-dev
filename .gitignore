@@ -1,0 +1,32 @@
+# Python/runtime artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Local environments
+.venv/
+venv/
+.env
+.env.*
+
+# Iteris runtime logs/prompts from real project runs
+.iteris/goal_prompt.txt
+.iteris/logs/
+.iteris/monitor/
+artifacts/
+
+# Documentation build artifacts
+*.aux
+*.log
+*.out
+*.toc
+docs/monitor-test-document.pdf

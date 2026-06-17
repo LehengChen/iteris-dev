@@ -1,0 +1,120 @@
+/* ═══ Dashboard: shared tags / dots ════════════════════════════════ */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.dot--ok { background: var(--green); }
+.dot--info { background: var(--accent); }
+.dot--warn { background: var(--orange); }
+.dot--bad { background: var(--red); }
+.dot--dim { background: var(--border-strong); }
+.dot--live { background: var(--green); animation: dot-pulse 2s ease-in-out infinite; }
+@keyframes dot-pulse { 50% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18); } }
+
+.header-spacer { flex: 1; }
+.answer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.answer-status--ready {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-weight: 600;
+}
+.answer-status--ready:hover { background: rgba(16, 185, 129, 0.18); }
+
+.dim { color: var(--text-dim); }
+.view-message { padding: 40px; text-align: center; font-size: 14px; }
+
+/* ═══ Shared primitives: section cards, list rows, chips ══════════ */
+.section-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.section-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.section-empty { padding: 14px; font-size: 12.5px; }
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--bg-tertiary);
+  min-width: 0;
+}
+.list-row:last-child { border-bottom: none; }
+.list-row--dim { opacity: 0.5; }
+.list-row .tag { flex-shrink: 0; }
+.row-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-title--secondary { color: var(--text-secondary); font-size: 12px; }
+.row-meta { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; white-space: nowrap; }
+
+.section-card--feed { display: flex; flex-direction: column; max-height: calc(100vh - 220px); }
+.feed { overflow-y: auto; }
+.feed-link { font-size: 11px; color: var(--accent-text); text-decoration: none; white-space: nowrap; }
+.feed-link:hover { text-decoration: underline; }
+.feed-toggle {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.feed-toggle:hover { color: var(--text-secondary); text-decoration: underline; }
+
+/* ═══ Markdown rendering (.md) ═════════════════════════════════════ */
+.fact-drawer-body--md { white-space: normal; font-family: var(--font-sans); font-size: 12.5px; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3 { font-size: 13px; margin: 14px 0 6px; color: var(--text-primary); }
+.md h1 { font-size: 14px; }
+.md p { margin: 6px 0; line-height: 1.6; }
+.md ul, .md ol { margin: 6px 0; padding-left: 20px; }
+.md li { margin: 3px 0; line-height: 1.55; }
+.md code {
+  font-size: 11.5px;
+  background: var(--bg-tertiary);
+  padding: 1px 5px;
+  border-radius: 4px;
+  word-break: break-word;
+}
+.md pre { background: var(--bg-tertiary); padding: 10px 12px; border-radius: 6px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md blockquote { margin: 6px 0; padding-left: 12px; border-left: 3px solid var(--border-strong); color: var(--text-secondary); }
+.md table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+.md th, .md td { border: 1px solid var(--border); padding: 4px 10px; text-align: left; }
+.md th { background: var(--bg-secondary); }
+.md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.md strong { color: var(--text-primary); }
+
+/* Worker-reported (not yet finalized) phases render softer. */
+.tag--soft { opacity: 0.65; }

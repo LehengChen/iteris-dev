@@ -1,0 +1,80 @@
+{
+  "strings": {
+    "monitor_title": "Iteris Monitor",
+    "choose_title": "Choose an option",
+    "lang_prompt": "Choose interface language",
+    "lang_option_zh": "1. 中文 (Chinese)",
+    "lang_option_en": "2. English",
+    "lang_input": "Enter 1 or 2 > ",
+    "lang_invalid": "Enter 1 for Chinese or 2 for English.",
+    "thinking": "Thinking, please wait...",
+    "menu_input": "Enter 1-4, or describe what you need > ",
+    "freeform_hint": "Enter 1-4, or type your question directly; exit to leave.",
+    "wizard_start": "Starting guided new project setup",
+    "monitor_reply_title": "Monitor",
+    "exit_words": ["exit", "quit", "q"],
+    "welcome_title": "Welcome to Iteris Monitor",
+    "outside_hint": "You are not inside an Iteris project directory. Pick a menu item or type a question.",
+    "first_use_heading": "── First time? ──",
+    "outside_quick_help": "When useful, I can help check setup, create a new project, continue an existing project, or explain Iteris first.",
+    "in_project_hint": "What would you like to do?",
+    "menu_heading": "── Menu ──",
+    "menu_footer": "Enter 1-4, or describe what you need.\nType exit / quit to leave.",
+    "project_label": "Project",
+    "path_label": "Path",
+    "source_label": "Source file",
+    "target_label": "Target artifact",
+    "evolve_goal_label": "Evolve goal",
+    "executor_label": "Agent backend",
+    "executor_env_hint": "(env ITERIS_EXECUTOR)",
+    "wizard_title": "New project wizard",
+    "wizard_intro": "We'll collect a few details, create the project, and optionally start iteris run.",
+    "wizard_dir": "Project directory (will be created if needed)",
+    "wizard_problem": "Problem statement: paste a file path, or type problem text (blank line ends paste mode)",
+    "wizard_paste_hint": "Paste problem text. Enter a blank line when done:",
+    "wizard_refs": "Reference files or folders (comma-separated, optional)",
+    "wizard_arxiv": "arXiv IDs or URLs (comma-separated, optional)",
+    "wizard_notes": "Short notes for the operator (optional)",
+    "wizard_run_now": "Start iteris run now?",
+    "wizard_confirm_create": "Create this project now?",
+    "wizard_creating": "Creating project...",
+    "wizard_fetch_arxiv": "Fetching arXiv reference {arxiv_id}...",
+    "wizard_done_title": "Project ready",
+    "wizard_run_started": "Started iteris run in the background (tmux). Use iteris dashboard to view live progress.",
+    "wizard_run_skipped": "Project created. Continue from the project directory with iteris monitor when you want help checking status or starting a run: {path}",
+    "wizard_cancelled": "Wizard cancelled.",
+    "wizard_error": "Could not create project: {error}"
+  },
+  "opening_messages": {
+    "none": "The user started iteris monitor outside an Iteris project directory. Reply briefly and ask whether they want you to check setup, guide new project creation, continue an existing project, or first explain Iteris.",
+    "single": "The user is in a single Iteris project. First report the current project progress from lookups and readable files, then ask one low-pressure question about whether to continue discussing next steps.",
+    "family_root": "The user is in an evolve family root project. First report the mathematical progress from lookups, EVOLVE summaries, and family memory, then ask one low-pressure question about continuing the decision discussion.",
+    "family_child": "The user is in an evolve child project. First report this node's mathematical progress and family context from lookups, then ask one low-pressure question about continuing with details or next steps."
+  },
+  "menu": {
+    "none": [
+      ["1", "First-time setup", "I'm new to Iteris. First judge whether this environment is ready, then ask whether you should run read-only setup checks; do not just give me a command list."],
+      ["2", "Create a new project", "I want to create a new Iteris project. Ask for missing information such as project directory, problem source, references, arXiv IDs, and notes; before creating files or starting a run, ask me to confirm."],
+      ["3", "Continue an existing project", "I already have an Iteris project directory. Ask for the project path; after I provide it, inspect it read-only yourself rather than asking me to switch directories or run commands, then decide whether to inspect status, recover a run, or open dashboard."],
+      ["4", "Understand Iteris", "Briefly explain Iteris in plain language, then ask whether I want to learn about single-project runs, evolve families, or creating a new project."]
+    ],
+    "single": [
+      ["1", "Check project progress", "First summarize how far this project has advanced mathematically from lookups and readable project files: current result or target artifact, known blockers, and run state. End with one low-pressure question asking whether we should continue discussing next steps."],
+      ["2", "Start or resume the run", "I want to start or resume iteris run. First decide from status whether run or recover is appropriate, then ask whether I want you to perform that action."],
+      ["3", "Open dashboard", "I want live run details. First judge whether dashboard is needed, ask whether I want you to start it, and offer read-only inspection if useful."],
+      ["4", "Understand project layout", "Briefly explain the key project directories, then ask whether I want you to inspect source, facts/tasks, results, or logs."]
+    ],
+    "family_root": [
+      ["1", "Check evolve family status", "I'm responsible for this evolve family root. First summarize how far the family has advanced mathematically using lookups, EVOLVE summaries, and family memory: substantive results, active directions, known boundaries or failed paths, plus budget and node state. End with one low-pressure question asking whether we should continue discussing the next decision."],
+      ["2", "Manage evolve supervisor", "I want to start or understand the evolve supervisor. First decide whether it should be started, stopped, or left running, then ask whether I want you to perform that action."],
+      ["3", "Inspect worker projects", "First judge which workers are running and which slots are free, then ask whether I want you to inspect abnormal workers, choose the next worker, or recover a node."],
+      ["4", "Open dashboard", "I want live run details. First judge whether dashboard is needed, then ask whether I want you to start dashboard or do read-only status inspection first."]
+    ],
+    "family_child": [
+      ["1", "Check this node's progress", "First prioritize status.math_progress.generalization, evolve_status.current_child, and readable project files; summarize how far this node has advanced mathematically, how it relates to the family goal, its target/phase, and obvious blockers. End with one low-pressure question asking whether we should continue with details or next steps."],
+      ["2", "Start or resume this node", "I want to start or resume the agent on this node. First decide whether run or recover is appropriate, then ask whether I want you to perform it."],
+      ["3", "Understand family context", "Briefly explain this node's place in the family from evolve lookups, then ask whether I want the root goal, parent direction, or sibling comparison."],
+      ["4", "Open dashboard", "First decide whether dashboard should be opened from this node or the family root, then ask whether I want you to start it."]
+    ]
+  }
+}
