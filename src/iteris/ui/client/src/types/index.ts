@@ -6,3 +6,4 @@ export * from './activity';
 export * from './frontier';
 export * from './evolve';
 export * from './status';
+export * from './report';
