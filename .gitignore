@@ -25,7 +25,6 @@ venv/
 artifacts/
 
 # Report-local build outputs
-third_party_tex/
 reports/*/build/
 
 # Documentation build artifacts

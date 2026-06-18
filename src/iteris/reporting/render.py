@@ -134,15 +134,6 @@ def _theorem_text(
 ) -> str:
     result = str((evidence.get("answer") or {}).get("verified_positive_result") or "").strip()
     cite = _cite(citation_keys(references, "target_artifact", "assembly_verification"), include_references)
-    if "||K-Khat_k||_infty" in result:
-        return (
-            "For the fermionic kernel "
-            r"\(K(t,\omega)=e^{-t\omega}/(1+e^{-\omega})\), exact continuous GECP "
-            r"achieves \(\|K-\widehat K_k\|_\infty\le \epsilon\) with "
-            r"\(k=O(\log(e\Lambda)\log(e/\epsilon))\)"
-            + cite
-            + "."
-        )
     text = latex_escape(result or "The verified target artifact establishes the stated project result")
     return text + cite + "."
 

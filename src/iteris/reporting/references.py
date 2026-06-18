@@ -43,7 +43,7 @@ def build_reference_registry(
         "version": version,
         "style": style,
         "citation_style": "bibtex",
-        "bibliography": _bibliography_path(report_id, version),
+        "bibliography": _bibliography_path(report_id, version) if include_internal else "",
         "include_internal": include_internal,
         "keys": {"facts": {}, "verifications": {}, "artifacts": {}},
         "entries": [],
@@ -309,6 +309,8 @@ def _artifact_paths(evidence: dict[str, Any], answer: dict[str, Any]) -> list[tu
             pairs.append((str(record.get("role") or "source_path"), str(record["path"])))
     for record in evidence.get("checked_artifacts") or []:
         if isinstance(record, dict) and record.get("path"):
+            if record.get("kind") != "project_path":
+                continue
             pairs.append(("checked_artifact", str(record["path"])))
     return _unique_pairs(pairs)
 

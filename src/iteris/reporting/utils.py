@@ -36,7 +36,7 @@ def parse_status(path: Path) -> dict[str, Any]:
 def guess_target_artifact(root: Path) -> str:
     status = parse_status(root / "STATUS.md")
     if status.get("target_artifact"):
-        return str(status["target_artifact"])
+        return relative_project_path(root, str(status["target_artifact"]))
     result_dir = root / "results"
     candidates = sorted(
         result_dir.glob("**/*.md"),
@@ -47,6 +47,7 @@ def guess_target_artifact(root: Path) -> str:
 
 
 def natural_proof_path(root: Path, target_artifact: str) -> str:
+    target_artifact = relative_project_path(root, target_artifact)
     if not target_artifact:
         return ""
     target = root / target_artifact
@@ -58,6 +59,7 @@ def natural_proof_path(root: Path, target_artifact: str) -> str:
 
 
 def read_project_text(root: Path, rel: str | None, *, limit: int) -> str:
+    rel = relative_project_path(root, rel or "")
     if not rel:
         return ""
     path = root / rel
@@ -80,20 +82,23 @@ def extract_section(text: str, name: str) -> str:
 
 
 def relative_project_path(root: Path, value: str) -> str:
+    value = str(value or "").strip()
     if not value:
         return ""
     if value.startswith(("http://", "https://")):
         return value
+    root = root.resolve()
     path = Path(value)
     if path.is_absolute():
         try:
             return str(path.resolve().relative_to(root))
         except ValueError:
             return ""
-    normalized = str(path).replace("\\", "/").lstrip("./")
-    if normalized.startswith("../"):
+    normalized_path = Path(value.replace("\\", "/"))
+    parts = [part for part in normalized_path.parts if part not in {"", "."}]
+    if not parts or any(part == ".." for part in parts):
         return ""
-    return normalized
+    return "/".join(parts)
 
 
 def ordered_unique(values: list[str]) -> list[str]:

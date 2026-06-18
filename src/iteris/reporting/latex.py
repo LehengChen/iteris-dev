@@ -193,26 +193,47 @@ def build_latex(version_dir: Path, *, engine: str = "auto") -> dict[str, Any]:
     commands = _build_commands(chosen, main_tex.name, build_dir, needs_bibtex=needs_bibtex)
     runs: list[dict[str, Any]] = []
     ok = True
+    error = ""
     for command in commands:
-        result = subprocess.run(
-            command,
-            cwd=build_dir if command[0] == "bibtex" else version_dir,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-            timeout=180,
-        )
-        runs.append(
-            {
-                "command": command,
-                "returncode": result.returncode,
-                "stdout_tail": result.stdout[-2000:],
-                "stderr_tail": result.stderr[-2000:],
-            }
-        )
+        try:
+            result = subprocess.run(
+                command,
+                cwd=build_dir if command[0] == "bibtex" else version_dir,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=180,
+            )
+            runs.append(
+                {
+                    "command": command,
+                    "returncode": result.returncode,
+                    "stdout_tail": result.stdout[-2000:],
+                    "stderr_tail": result.stderr[-2000:],
+                }
+            )
+        except subprocess.TimeoutExpired as exc:
+            ok = False
+            error = f"LaTeX command timed out: {' '.join(command)}"
+            runs.append(
+                {
+                    "command": command,
+                    "returncode": None,
+                    "stdout_tail": str(exc.stdout or "")[-2000:],
+                    "stderr_tail": str(exc.stderr or "")[-2000:],
+                    "error": error,
+                }
+            )
+            break
+        except OSError as exc:
+            ok = False
+            error = f"LaTeX command failed to start: {' '.join(command)}: {exc}"
+            runs.append({"command": command, "returncode": None, "stdout_tail": "", "stderr_tail": "", "error": error})
+            break
         if result.returncode != 0:
             ok = False
+            error = f"LaTeX command failed with exit code {result.returncode}: {' '.join(command)}"
             break
 
     built_pdf = build_dir / "main.pdf"
@@ -229,6 +250,7 @@ def build_latex(version_dir: Path, *, engine: str = "auto") -> dict[str, Any]:
         "environment": env,
         "used_bibtex": needs_bibtex,
         "runs": runs,
+        "error": "" if ok else (error or "LaTeX build failed"),
     }
 
 

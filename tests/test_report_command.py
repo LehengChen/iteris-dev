@@ -23,6 +23,16 @@ from iteris.reporting.references import (
 )
 
 
+REPORT_FORBIDDEN_TERMS = (
+    "si" "am",
+    "ams" "art",
+    "publish" "er",
+    "journal" "-style",
+    "期" "刊",
+    "出版" "商",
+)
+
+
 def test_report_status_json_empty_project(tmp_path):
     root = tmp_path / "project"
     init_project(root)
@@ -38,6 +48,7 @@ def test_report_status_json_empty_project(tmp_path):
     assert payload["templates"] == ["iteris-report"]
     assert payload["styles"] == ["theory"]
     assert payload["latex"] is not None
+    _assert_no_report_template_forbidden_terms(json.dumps(payload, ensure_ascii=False))
 
 
 def test_report_new_and_draft_use_relative_evidence_paths(tmp_path):
@@ -88,6 +99,7 @@ def test_report_new_and_draft_use_relative_evidence_paths(tmp_path):
     assert not _contains_text(json.loads(references_json.read_text(encoding="utf-8")), str(root))
     assert str(root) not in references_bib.read_text(encoding="utf-8")
     assert "Iteris" not in text.replace("\\author{\\reportauthors}", "")
+    _assert_no_report_template_forbidden_terms(text)
 
 
 def test_report_portable_mode_hides_evidence_appendix(tmp_path):
@@ -109,6 +121,61 @@ def test_report_portable_mode_hides_evidence_appendix(tmp_path):
     assert not (root / "reports" / "demo" / "versions" / "v001" / "references.bib").exists()
     assert (root / "reports" / "demo" / "evidence.json").exists()
     assert (root / "reports" / "demo" / "versions" / "v001" / "evidence.json").exists()
+    references = json.loads((root / "reports" / "demo" / "versions" / "v001" / "references.json").read_text(encoding="utf-8"))
+    version_evidence = json.loads((root / "reports" / "demo" / "versions" / "v001" / "evidence.json").read_text(encoding="utf-8"))
+    assert references["bibliography"] == ""
+    assert references["include_internal"] is False
+    assert references["entries"] == []
+    assert references["omitted_reason"] == "portable evidence mode omits internal project citations"
+    assert version_evidence["citations"]["bibliography"] == ""
+    assert version_evidence["citations"]["omitted_reason"] == references["omitted_reason"]
+
+
+def test_report_evidence_rejects_paths_outside_project(tmp_path):
+    root = _report_fixture(tmp_path)
+    outside = tmp_path / "outside.md"
+    outside.write_text("outside sentinel must not appear", encoding="utf-8")
+    (root / "STATUS.md").write_text(
+        "phase: goal_success_verified\n"
+        "target_artifact: ../outside.md\n"
+        "terminal_assembly_verification: verify-assembly\n"
+        "terminal_goal_success_verification: verify-goal\n"
+        "verified_positive_result: Demo theorem holds.\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "confined", "--json"])
+
+    assert result.exit_code == 0, result.output
+    evidence = json.loads((root / "reports" / "confined" / "versions" / "v001" / "evidence.json").read_text(encoding="utf-8"))
+    text = (root / "reports" / "confined" / "versions" / "v001" / "main.tex").read_text(encoding="utf-8")
+    assert evidence["answer"]["target_artifact"] == ""
+    assert all(record["role"] != "target_artifact" for record in evidence["source_paths"])
+    assert "outside sentinel" not in text
+
+
+def test_report_evidence_does_not_fallback_to_unchecked_facts(tmp_path):
+    root = _report_fixture(tmp_path)
+    (root / "STATUS.md").write_text(
+        "phase: goal_success_verified\n"
+        "target_artifact: results/demo/answer.md\n"
+        "terminal_assembly_verification: verify-assembly\n"
+        "terminal_goal_success_verification: verify-goal\n"
+        "verified_positive_result: Demo theorem holds.\n",
+        encoding="utf-8",
+    )
+    for name in ["verify-goal", "verify-assembly"]:
+        path = root / "verification" / "results" / f"{name}.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["checked_fact_ids"] = []
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "unchecked", "--json"])
+
+    assert result.exit_code == 0, result.output
+    evidence = json.loads((root / "reports" / "unchecked" / "versions" / "v001" / "evidence.json").read_text(encoding="utf-8"))
+    assert evidence["fact_graph"]["checked_fact_ids"] == []
+    assert evidence["facts"] == []
 
 
 def test_report_evidence_generates_bibtex_references(tmp_path):
@@ -141,6 +208,7 @@ def test_report_evidence_generates_bibtex_references(tmp_path):
     rendered = render_bibtex(entries)
     assert f"@misc{{{citation_key_for_fact('fact:demo:main')}," in rendered
     assert r"Project file: \path{reports/demo-report/versions/v001/evidence.json}" in rendered
+    assert "https://example.com/check" not in rendered
     assert str(root) not in rendered
 
 
@@ -259,7 +327,7 @@ def _report_fixture(tmp_path: Path) -> Path:
                 "passed": True,
                 "summary": "Goal passed.",
                 "checked_fact_ids": ["fact:demo:main"],
-                "checked_artifacts": [target, "memory/facts/fact-demo-main.md"],
+                "checked_artifacts": [target, "memory/facts/fact-demo-main.md", "https://example.com/check"],
                 "target_artifact": target,
                 "created_at": "2026-06-18T00:00:00Z",
             }
@@ -291,3 +359,9 @@ def _contains_text(value: Any, needle: str) -> bool:
     if isinstance(value, list):
         return any(_contains_text(item, needle) for item in value)
     return needle in value if isinstance(value, str) else False
+
+
+def _assert_no_report_template_forbidden_terms(text: str) -> None:
+    lowered = text.lower()
+    for term in REPORT_FORBIDDEN_TERMS:
+        assert term not in lowered

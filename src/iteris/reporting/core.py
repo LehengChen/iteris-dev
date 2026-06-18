@@ -167,6 +167,8 @@ def draft_report(
         "bibliography": references["bibliography"],
         "include_internal": include_internal,
     }
+    if not include_internal and references.get("omitted_reason"):
+        evidence_payload["citations"]["omitted_reason"] = references["omitted_reason"]
     evidence_payload["version"] = current
     write_json(directory / "evidence.json", evidence_payload)
     write_json(directory / "references.json", references)

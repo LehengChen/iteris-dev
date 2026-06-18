@@ -22,7 +22,7 @@ EVIDENCE_SCHEMA = "iteris.report_evidence.v0"
 def collect_evidence(project_root: Path, *, report_id: str) -> dict[str, Any]:
     root = project_root.resolve()
     status = parse_status(root / "STATUS.md")
-    target_artifact = str(status.get("target_artifact") or guess_target_artifact(root) or "")
+    target_artifact = relative_project_path(root, str(status.get("target_artifact") or guess_target_artifact(root) or ""))
     verification_results = latest_results(root)
     goal = _find_verification(
         verification_results,
@@ -42,9 +42,6 @@ def collect_evidence(project_root: Path, *, report_id: str) -> dict[str, Any]:
     fact_rows = _fact_rows(root)
     fact_by_id = {str(row.get("fact_id")): row for row in fact_rows if row.get("fact_id")}
     facts = [_compact_fact_row(fact_by_id[fid]) for fid in checked_fact_ids if fid in fact_by_id]
-    if not facts:
-        facts = [_compact_fact_row(row) for row in fact_rows if row.get("status") == "verified"][:12]
-        checked_fact_ids = [str(row.get("fact_id")) for row in facts if row.get("fact_id")]
 
     source_paths = _ordered_path_records(
         root,
@@ -175,7 +172,7 @@ def _find_verification(
     if request_id:
         for row in results:
             if row.get("request_id") == request_id:
-                return row
+                return row if row.get("passed") else None
     matching = [row for row in results if row.get("mode") == mode and row.get("passed")]
     if not matching:
         return None
