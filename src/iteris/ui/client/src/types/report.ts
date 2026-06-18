@@ -55,6 +55,7 @@ export interface ReportFact {
   status?: string;
   review_level?: string;
   verification?: string;
+  body?: string;
 }
 
 export interface ReportEvidence {

@@ -1,10 +1,9 @@
-import { Link } from 'react-router-dom';
-import { useMemo, useState } from 'react';
-import { useReportWorkspaceDetail, useReportWorkspaces } from '../hooks/useApi';
+import { useEffect, useMemo, useState } from 'react';
+import { useFactDetail, useReportWorkspaceDetail, useReportWorkspaces } from '../hooks/useApi';
 import { timeAgo } from '../lib/format';
 import { Tag } from '../components/Tag';
 import { ListRow, SectionCard, SectionEmpty } from '../components/SectionCard';
-import type { ReportEvidence, ReportFileRecord, ReportVersion, ReportWorkspaceItem } from '../types';
+import type { ReportEvidence, ReportFact, ReportReferences, ReportVersion, ReportWorkspaceItem } from '../types';
 
 function reportFileUrl(path?: string): string {
   return path ? `/api/report-file?path=${encodeURIComponent(path)}` : '';
@@ -14,38 +13,6 @@ function factLabel(id: string): string {
   const parts = id.split(':');
   const last = parts[parts.length - 1];
   return /^\d{8}T/.test(last) ? parts[parts.length - 2] ?? id : last || id;
-}
-
-function FileLink({ file, label }: { file?: ReportFileRecord | null; label: string }) {
-  if (!file?.exists) return null;
-  return (
-    <a className="report-file-link" href={reportFileUrl(file.path)} target="_blank" rel="noreferrer">
-      {label}
-    </a>
-  );
-}
-
-function VersionFiles({ current }: { current?: ReportVersion | null }) {
-  if (!current) return null;
-  const files = [
-    ['PDF', current.pdf, current.pdf_exists],
-    ['TeX', current.main_tex, current.main_tex_exists],
-    ['evidence.json', current.evidence, current.evidence_exists],
-    ['references.json', current.references, current.references_exists],
-  ] as const;
-  return (
-    <div className="report-file-strip">
-      {files.map(([label, path, exists]) =>
-        exists ? (
-          <a key={label} className="report-file-link" href={reportFileUrl(path)} target="_blank" rel="noreferrer">
-            {label}
-          </a>
-        ) : (
-          <span key={label} className="report-file-link report-file-link--missing">{label}</span>
-        ),
-      )}
-    </div>
-  );
 }
 
 function ReportRow({ item, selected, onSelect }: {
@@ -69,34 +36,91 @@ function ReportRow({ item, selected, onSelect }: {
   );
 }
 
+interface OrderedFact {
+  fact: ReportFact;
+  label: string;
+  citationKey?: string;
+}
+
+function orderedReferenceFacts(evidence?: ReportEvidence | null, references?: ReportReferences | null): OrderedFact[] {
+  const facts = evidence?.facts ?? [];
+  const factById = new Map<string, ReportFact>();
+  for (const fact of facts) {
+    if (fact.fact_id) factById.set(fact.fact_id, fact);
+  }
+  const out: OrderedFact[] = [];
+  const seen = new Set<string>();
+  for (const item of references?.fact_labels ?? []) {
+    if (!item.fact_id || !factById.has(item.fact_id)) continue;
+    seen.add(item.fact_id);
+    out.push({
+      fact: factById.get(item.fact_id)!,
+      label: item.label || factLabel(item.fact_id),
+      citationKey: item.citation_key,
+    });
+  }
+  facts.forEach((fact, index) => {
+    if (!fact.fact_id || seen.has(fact.fact_id)) return;
+    out.push({ fact, label: `F${index + 1}` });
+  });
+  return out;
+}
+
+function ReferenceFactRow({ item, open, onToggle }: {
+  item: OrderedFact;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const factId = item.fact.fact_id ?? '';
+  const detail = useFactDetail(open && factId ? factId : null);
+  const body = item.fact.body ?? detail.data?.fact?.body;
+  return (
+    <div className={`report-ref-fact${open ? ' report-ref-fact--open' : ''}`}>
+      <button className="report-ref-fact-head" onClick={onToggle}>
+        <span className="report-ref-label">{item.label}</span>
+        <span className="report-ref-main">
+          <span>{item.fact.claim_summary ?? factId}</span>
+          {item.citationKey && <code>{item.citationKey}</code>}
+        </span>
+      </button>
+      {open && (
+        <div className="report-ref-body">
+          <dl>
+            <span>
+              <dt>status</dt>
+              <dd>{item.fact.status ?? 'unknown'}</dd>
+            </span>
+            <span>
+              <dt>verification</dt>
+              <dd>{item.fact.verification ?? 'none'}</dd>
+            </span>
+            <span>
+              <dt>file</dt>
+              <dd>{item.fact.path ?? 'unknown'}</dd>
+            </span>
+          </dl>
+          <pre>{body ?? (detail.isLoading ? 'Loading fact statement...' : 'Fact statement unavailable.')}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EvidenceSidebar({
   evidence,
-  current,
-  notice,
-  authorDraft,
+  references,
 }: {
   evidence?: ReportEvidence | null;
-  current?: ReportVersion | null;
-  notice?: string;
-  authorDraft?: ReportFileRecord;
+  references?: ReportReferences | null;
 }) {
-  const facts = evidence?.facts ?? [];
-  const sourcePaths = evidence?.source_paths ?? [];
-  const artifacts = evidence?.checked_artifacts ?? [];
+  const facts = orderedReferenceFacts(evidence, references);
+  const [openFactId, setOpenFactId] = useState<string | null>(facts[0]?.fact.fact_id ?? null);
+  useEffect(() => {
+    setOpenFactId(facts[0]?.fact.fact_id ?? null);
+  }, [evidence?.report_id, evidence?.version, references?.include_internal]);
   return (
     <aside className="report-side">
-      <SectionCard title="Evidence & references">
-        {notice && (
-          <div className="report-notice">
-            <Tag kind="warn">portable</Tag>
-            <span>{notice}</span>
-          </div>
-        )}
-        <div className="report-side-block">
-          <div className="report-side-title">Version files</div>
-          <VersionFiles current={current} />
-          <FileLink file={authorDraft} label="author_draft.md" />
-        </div>
+      <SectionCard title="References">
         {evidence?.answer?.verified_positive_result && (
           <div className="report-side-block">
             <div className="report-side-title">Verified result</div>
@@ -104,47 +128,21 @@ function EvidenceSidebar({
           </div>
         )}
         <div className="report-side-block">
-          <div className="report-side-title">Checked facts · {facts.length}</div>
-          <div className="report-fact-list">
+          <div className="report-side-title">Facts in reference order · {facts.length}</div>
+          <div className="report-ref-list">
             {facts.length === 0 && <span className="dim">No checked facts recorded.</span>}
-            {facts.map((fact) =>
-              fact.fact_id ? (
-                <Link
-                  key={fact.fact_id}
-                  className="report-fact-chip"
-                  to={`/facts?focus=${encodeURIComponent(fact.fact_id)}`}
-                >
-                  <span>{factLabel(fact.fact_id)}</span>
-                  <small>{fact.claim_summary}</small>
-                </Link>
-              ) : null,
-            )}
+            {facts.map((fact) => (
+              <ReferenceFactRow
+                key={fact.fact.fact_id ?? fact.label}
+                item={fact}
+                open={openFactId === fact.fact.fact_id}
+                onToggle={() => setOpenFactId(openFactId === fact.fact.fact_id ? null : fact.fact.fact_id ?? null)}
+              />
+            ))}
           </div>
-        </div>
-        <div className="report-side-block">
-          <div className="report-side-title">Source paths · {sourcePaths.length}</div>
-          <PathList items={sourcePaths.map((item) => ({ label: item.role, path: item.path, exists: item.exists }))} />
-        </div>
-        <div className="report-side-block">
-          <div className="report-side-title">Checked artifacts · {artifacts.length}</div>
-          <PathList items={artifacts.map((item) => ({ label: item.kind, path: item.path, exists: true }))} />
         </div>
       </SectionCard>
     </aside>
-  );
-}
-
-function PathList({ items }: { items: Array<{ label?: string; path?: string; exists?: boolean }> }) {
-  if (items.length === 0) return <div className="section-empty dim">None recorded.</div>;
-  return (
-    <div className="report-path-list">
-      {items.map((item, idx) => (
-        <div key={`${item.path ?? 'path'}-${idx}`} className="report-path-row">
-          <Tag kind={item.exists ? 'info' : 'dim'}>{item.label ?? 'path'}</Tag>
-          <code>{item.path}</code>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -217,9 +215,7 @@ export function Reports() {
 
       <EvidenceSidebar
         evidence={workspace?.evidence}
-        current={current}
-        notice={workspace?.notice}
-        authorDraft={workspace?.author_draft}
+        references={workspace?.references}
       />
     </div>
   );
