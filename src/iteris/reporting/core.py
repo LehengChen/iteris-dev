@@ -9,11 +9,12 @@ from typing import Any
 
 from iteris.gitops import ensure_gitignore
 from iteris.project import append_jsonl, now_iso, now_stamp, read_json, slugify, write_json
+from iteris.reporting.assets import prepare_template_assets
 from iteris.reporting.evidence import collect_evidence
 from iteris.reporting.latex import build_latex, check_latex_environment
 from iteris.reporting.references import build_reference_registry, render_bibtex
 from iteris.reporting.render import render_report
-from iteris.reporting.templates import style_profile, template_manifest
+from iteris.reporting.templates import style_names, style_profile, template_manifest, template_names, template_rendering
 from iteris.reporting.utils import parse_status, read_project_text
 
 REPORT_SCHEMA = "iteris.report.v0"
@@ -37,12 +38,12 @@ def report_status(project_root: Path, *, include_latex: bool = False) -> dict[st
         "report_count": len(reports),
         "recent_reports": reports[:5],
         "latex": check_latex_environment() if include_latex else None,
-        "templates": ["amsart"],
-        "styles": ["theory"],
+        "templates": template_names(),
+        "styles": style_names(),
         "cli": {
             "status": "iteris report status . --json",
-            "new": "iteris report new . --report-id <id> --template amsart --style theory",
-            "draft": "iteris report draft . --report-id <id>",
+            "new": "iteris report new . --report-id <id> --template amsart|siam --style theory",
+            "draft": "iteris report draft . --report-id <id> [--new-version --template siam]",
             "doctor": "iteris report doctor . --json",
             "build": "iteris report build . --report-id <id>",
             "portable": "iteris report config . --report-id <id> --evidence portable",
@@ -106,7 +107,7 @@ def create_report(
     write_json(directory / "report.json", report)
     lock = dict(manifest)
     lock["locked_at"] = now
-    lock["lock_reason"] = "MVP uses local TeX distribution files; no upstream class/style files are vendored."
+    lock["lock_reason"] = "Adapter metadata is Apache-2.0; upstream TeX assets remain outside the repository license."
     write_json(directory / "template.lock.json", lock)
     write_json(directory / "evidence.json", collect_evidence(root, report_id=resolved_id))
     _write_if_missing(directory / "feedback.md", f"# Feedback for {resolved_id}\n\n")
@@ -126,18 +127,33 @@ def draft_report(
     report_id: str,
     new_version: bool = False,
     evidence: str | None = None,
+    template: str | None = None,
+    style: str | None = None,
 ) -> dict[str, Any]:
     root = project_root.resolve()
     directory = _report_dir(root, _report_id(report_id))
     report = _load_report(directory)
+    _backfill_version_metadata(directory, report)
     if evidence is not None:
         report["evidence_mode"] = _validate_evidence_mode(evidence)
+    if template is not None:
+        report["template"] = template_manifest(template)["template_id"]
+    if style is not None:
+        profile = style_profile(style)
+        report["style"] = profile["style_id"]
+        report["style_profile"] = profile
     current = _ensure_version(report, new_version=new_version)
     version_dir = directory / "versions" / current
     (version_dir / "sections").mkdir(parents=True, exist_ok=True)
     evidence_payload = collect_evidence(root, report_id=report["report_id"])
     include_internal = report.get("evidence_mode") == "linked"
-    references = build_reference_registry(evidence_payload, include_internal=include_internal, version=current)
+    rendering = template_rendering(str(report.get("template") or "amsart"))
+    references = build_reference_registry(
+        evidence_payload,
+        include_internal=include_internal,
+        version=current,
+        style=str(rendering.get("bibliography_style") or "plain"),
+    )
     evidence_payload["citations"] = {
         "schema_version": references["schema_version"],
         "registry": f"reports/{report['report_id']}/references.json",
@@ -146,6 +162,10 @@ def draft_report(
     }
     write_json(directory / "evidence.json", evidence_payload)
     write_json(directory / "references.json", references)
+    assets = prepare_template_assets(root, version_dir, str(report.get("template") or "amsart"))
+    lock = _template_lock(report, assets)
+    write_json(directory / "template.lock.json", lock)
+    write_json(version_dir / "template.lock.json", lock)
     if include_internal:
         (version_dir / "references.bib").write_text(render_bibtex(references), encoding="utf-8")
     else:
@@ -162,6 +182,8 @@ def draft_report(
         "main_tex": f"reports/{report['report_id']}/versions/{current}/main.tex",
         "references": f"reports/{report['report_id']}/references.json",
         "references_bib": f"reports/{report['report_id']}/versions/{current}/references.bib" if include_internal else "",
+        "template": report.get("template"),
+        "template_assets": f"reports/{report['report_id']}/versions/{current}/template.assets.json",
         "evidence": f"reports/{report['report_id']}/evidence.json",
         "evidence_mode": report.get("evidence_mode"),
     }
@@ -231,7 +253,16 @@ def _new_report_payload(
         "created_at": now,
         "updated_at": now,
         "current_version": "v001",
-        "versions": [{"version": "v001", "created_at": now, "source_dir": "versions/v001", "main_tex": "versions/v001/main.tex"}],
+        "versions": [
+            {
+                "version": "v001",
+                "created_at": now,
+                "source_dir": "versions/v001",
+                "main_tex": "versions/v001/main.tex",
+                "template": template,
+                "style": style,
+            }
+        ],
         "paths": {
             "directory": f"reports/{report_id}",
             "report": "report.json",
@@ -254,6 +285,8 @@ def _ensure_version(report: dict[str, Any], *, new_version: bool) -> str:
             "created_at": now_iso(),
             "source_dir": f"versions/{current}",
             "main_tex": f"versions/{current}/main.tex",
+            "template": report.get("template"),
+            "style": report.get("style"),
         }
     )
     report["current_version"] = current
@@ -266,11 +299,40 @@ def _update_version_paths(report: dict[str, Any], version: str, *, include_inter
             continue
         row["main_tex"] = f"versions/{version}/main.tex"
         row["references"] = "references.json"
+        row["template"] = report.get("template")
+        row["style"] = report.get("style")
+        row["template_lock"] = f"versions/{version}/template.lock.json"
+        row["template_assets"] = f"versions/{version}/template.assets.json"
         if include_internal:
             row["references_bib"] = f"versions/{version}/references.bib"
         else:
             row.pop("references_bib", None)
         return
+
+
+def _backfill_version_metadata(directory: Path, report: dict[str, Any]) -> None:
+    for row in report.get("versions", []):
+        if not isinstance(row, dict):
+            continue
+        if not row.get("template"):
+            row["template"] = _infer_version_template(directory, row) or report.get("template") or "amsart"
+        if not row.get("style"):
+            row["style"] = report.get("style") or "theory"
+
+
+def _infer_version_template(directory: Path, row: dict[str, Any]) -> str:
+    main_tex = str(row.get("main_tex") or "")
+    if not main_tex:
+        return ""
+    path = directory / main_tex
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace")[:2000]
+    if "siamart" in text:
+        return "siam"
+    if "amsart" in text:
+        return "amsart"
+    return ""
 
 
 def _compact_report(root: Path, report: dict[str, Any]) -> dict[str, Any]:
@@ -320,6 +382,14 @@ def _write_writing_plan(directory: Path, report: dict[str, Any]) -> None:
         f"## Sections\n\n{sections}\n"
     )
     (directory / "writing_plan.md").write_text(text, encoding="utf-8")
+
+
+def _template_lock(report: dict[str, Any], assets: dict[str, Any]) -> dict[str, Any]:
+    lock = template_manifest(str(report.get("template") or "amsart"))
+    lock["locked_at"] = now_iso()
+    lock["lock_reason"] = "Adapter metadata is Apache-2.0; upstream TeX assets remain outside the repository license."
+    lock["assets"] = assets
+    return lock
 
 
 def _default_title(root: Path) -> str:

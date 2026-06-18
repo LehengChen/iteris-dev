@@ -51,7 +51,7 @@ def new(
     project_path: str = typer.Argument(".", help="Iteris project path."),
     report_id: str | None = typer.Option(None, "--report-id", help="Stable report id under reports/."),
     title: str | None = typer.Option(None, "--title", help="Report title."),
-    template: str = typer.Option("amsart", "--template", help="LaTeX template adapter. MVP supports amsart."),
+    template: str = typer.Option("amsart", "--template", help="LaTeX template adapter: amsart or siam."),
     style: str = typer.Option("theory", "--style", help="Writing profile. MVP supports theory."),
     evidence: str = typer.Option("linked", "--evidence", help="Evidence mode: linked or portable."),
     no_draft: bool = typer.Option(False, "--no-draft", help="Create metadata only; do not render main.tex."),
@@ -86,12 +86,14 @@ def draft(
     report_id: str = typer.Option(..., "--report-id", help="Report id under reports/."),
     new_version: bool = typer.Option(False, "--new-version", help="Create a new source version instead of rewriting the current one."),
     evidence: str | None = typer.Option(None, "--evidence", help="Override evidence mode for this draft: linked or portable."),
+    template: str | None = typer.Option(None, "--template", help="Override template for this draft/version: amsart or siam."),
+    style: str | None = typer.Option(None, "--style", help="Override writing profile for this draft/version."),
     json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON."),
 ) -> None:
     """Render or re-render the report LaTeX source."""
     root = require_public_project(project_path)
     try:
-        payload = draft_report(root, report_id=report_id, new_version=new_version, evidence=evidence)
+        payload = draft_report(root, report_id=report_id, new_version=new_version, evidence=evidence, template=template, style=style)
     except (FileNotFoundError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     if json_output:
@@ -141,6 +143,8 @@ def doctor(
             "Engine": payload.get("preferred_engine") or "(missing)",
             "amsart.cls": payload.get("amsart_cls") or "(not found)",
             "amsplain.bst": payload.get("amsplain_bst") or "(not found)",
+            "siamart.cls": payload.get("siamart_cls") or "(cache/download on draft)",
+            "siamplain.bst": payload.get("siamplain_bst") or "(cache/download on draft)",
             "BibTeX": "available" if payload.get("bibtex_available") else "(missing)",
             "Install hint": payload.get("install_hint") or "",
         }

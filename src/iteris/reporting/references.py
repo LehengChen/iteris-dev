@@ -32,6 +32,7 @@ def build_reference_registry(
     *,
     include_internal: bool,
     version: str = "",
+    style: str = "amsplain",
 ) -> dict[str, Any]:
     generated_at = now_iso()
     report_id = str(evidence.get("report_id") or "")
@@ -40,7 +41,7 @@ def build_reference_registry(
         "generated_at": generated_at,
         "report_id": report_id,
         "version": version,
-        "style": "amsplain",
+        "style": style,
         "citation_style": "bibtex",
         "bibliography": _bibliography_path(report_id, version),
         "include_internal": include_internal,

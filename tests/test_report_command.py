@@ -12,6 +12,7 @@ from iteris.memory.facts import rebuild_fact_index, write_fact
 from iteris.project import init_project
 from iteris.reporting.latex import check_latex_environment
 from iteris.reporting.latex import _build_commands
+from iteris.reporting.latex import _source_preferred_engine
 from iteris.reporting.references import (
     bibtex_entries_from_evidence_file,
     citation_key_for_artifact,
@@ -35,6 +36,7 @@ def test_report_status_json_empty_project(tmp_path):
     assert payload["fact_index"] == "memory/facts/FACT_INDEX.jsonl"
     assert payload["report_count"] == 0
     assert "amsart" in payload["templates"]
+    assert "siam" in payload["templates"]
     assert payload["styles"] == ["theory"]
     assert payload["latex"] is not None
 
@@ -140,6 +142,55 @@ def test_report_build_commands_run_bibtex_when_references_exist(tmp_path):
     commands = _build_commands("xelatex", "main.tex", tmp_path / "build", needs_bibtex=True)
 
     assert [command[0] for command in commands] == ["xelatex", "bibtex", "xelatex", "xelatex"]
+
+
+def test_report_auto_engine_prefers_pdflatex_for_siam(tmp_path):
+    main_tex = tmp_path / "main.tex"
+    main_tex.write_text("\\documentclass[review]{siamart}\\begin{document}x\\end{document}", encoding="utf-8")
+
+    engine = _source_preferred_engine(main_tex, {"preferred_engine": "xelatex", "engines": {"pdflatex": "/usr/bin/pdflatex"}})
+
+    assert engine == "pdflatex"
+
+
+def test_report_draft_new_version_can_switch_to_siam_template(tmp_path, monkeypatch):
+    root = _report_fixture(tmp_path)
+
+    def fake_prepare(_root: Path, version_dir: Path, template_id: str) -> dict[str, Any]:
+        payload = {
+            "schema_version": "iteris.template_assets.v0",
+            "template": template_id,
+            "prepared": [{"file": "siamart.cls", "version_path": "siamart.cls"}],
+            "missing": [],
+        }
+        (version_dir / "template.assets.json").write_text(json.dumps(payload), encoding="utf-8")
+        (version_dir / "siamart.cls").write_text("% fake class for path assertions\n", encoding="utf-8")
+        (version_dir / "siamplain.bst").write_text("% fake bst for path assertions\n", encoding="utf-8")
+        return payload
+
+    monkeypatch.setattr("iteris.reporting.core.prepare_template_assets", fake_prepare)
+    create = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "demo-report", "--json"])
+    assert create.exit_code == 0, create.output
+
+    draft = CliRunner().invoke(
+        app,
+        ["report", "draft", str(root), "--report-id", "demo-report", "--new-version", "--template", "siam", "--json"],
+    )
+
+    assert draft.exit_code == 0, draft.output
+    payload = json.loads(draft.output)
+    assert payload["version"] == "v002"
+    assert payload["template"] == "siam"
+    main_tex = root / "reports" / "demo-report" / "versions" / "v002" / "main.tex"
+    text = main_tex.read_text(encoding="utf-8")
+    assert "\\documentclass[review]{siamart}" in text
+    assert "\\begin{keywords}" in text
+    assert "\\begin{AMS}" in text
+    assert "\\bibliographystyle{siamplain}" in text
+    report = json.loads((root / "reports" / "demo-report" / "report.json").read_text(encoding="utf-8"))
+    assert report["versions"][0]["template"] == "amsart"
+    assert report["versions"][1]["template"] == "siam"
+    assert (root / "reports" / "demo-report" / "versions" / "v002" / "template.assets.json").exists()
 
 
 def test_report_lookup_triggered_by_latex_keywords(tmp_path):

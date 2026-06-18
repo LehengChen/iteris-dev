@@ -103,6 +103,8 @@ def check_latex_environment() -> dict[str, Any]:
     kpsewhich = shutil.which("kpsewhich") or ""
     amsart_path = ""
     amsplain_path = ""
+    siamplain_path = ""
+    siamart_path = ""
     if kpsewhich:
         try:
             result = subprocess.run(
@@ -123,9 +125,32 @@ def check_latex_environment() -> dict[str, Any]:
                 timeout=10,
             )
             amsplain_path = result.stdout.strip() if result.returncode == 0 else ""
+            result = subprocess.run(
+                [kpsewhich, "siamplain.bst"],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=10,
+            )
+            siamplain_path = result.stdout.strip() if result.returncode == 0 else ""
+            for cls_name in ["siamart251216.cls", "siamart250211.cls", "siamart220329.cls", "siamart.cls"]:
+                result = subprocess.run(
+                    [kpsewhich, cls_name],
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                    timeout=10,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    siamart_path = result.stdout.strip()
+                    break
         except (OSError, subprocess.SubprocessError):
             amsart_path = ""
             amsplain_path = ""
+            siamplain_path = ""
+            siamart_path = ""
     available = [name for name, path in engines.items() if path]
     return {
         "schema_version": "iteris.latex_environment.v0",
@@ -136,7 +161,10 @@ def check_latex_environment() -> dict[str, Any]:
         "kpsewhich": kpsewhich,
         "amsart_cls": amsart_path,
         "amsplain_bst": amsplain_path,
+        "siamart_cls": siamart_path,
+        "siamplain_bst": siamplain_path,
         "amsart_available": bool(amsart_path) or bool(engines.get("tectonic")),
+        "siam_available": bool(siamart_path and siamplain_path),
         "bibtex_available": bool(tools["bibtex"]) or bool(engines.get("latexmk")) or bool(engines.get("tectonic")),
         "install_hint": latex_install_hint(),
     }
@@ -171,7 +199,7 @@ def build_latex(version_dir: Path, *, engine: str = "auto") -> dict[str, Any]:
     if not main_tex.exists():
         raise FileNotFoundError(f"missing report source: {main_tex}")
     env = check_latex_environment()
-    chosen = env["preferred_engine"] if engine == "auto" else engine
+    chosen = _source_preferred_engine(main_tex, env) if engine == "auto" else engine
     if not chosen or not shutil.which(chosen):
         return {
             "ok": False,
@@ -192,6 +220,8 @@ def build_latex(version_dir: Path, *, engine: str = "auto") -> dict[str, Any]:
         }
     if needs_bibtex:
         shutil.copy2(version_dir / "references.bib", build_dir / "references.bib")
+        for bst_path in version_dir.glob("*.bst"):
+            shutil.copy2(bst_path, build_dir / bst_path.name)
     commands = _build_commands(chosen, main_tex.name, build_dir, needs_bibtex=needs_bibtex)
     runs: list[dict[str, Any]] = []
     ok = True
@@ -246,6 +276,14 @@ def _build_commands(engine: str, main_name: str, build_dir: Path, *, needs_bibte
             return [base, ["bibtex", Path(main_name).stem], base, base]
         return [base, base]
     return [[engine, main_name]]
+
+
+def _source_preferred_engine(main_tex: Path, env: dict[str, Any]) -> str:
+    text = main_tex.read_text(encoding="utf-8", errors="replace")[:2000]
+    engines = env.get("engines") if isinstance(env.get("engines"), dict) else {}
+    if "siamart" in text and engines.get("pdflatex"):
+        return "pdflatex"
+    return str(env.get("preferred_engine") or "")
 
 
 def _package_manager() -> str:
