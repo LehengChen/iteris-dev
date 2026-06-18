@@ -3,7 +3,8 @@ import { useFactDetail, useReportWorkspaceDetail, useReportWorkspaces } from '..
 import { timeAgo } from '../lib/format';
 import { Tag } from '../components/Tag';
 import { ListRow, SectionCard, SectionEmpty } from '../components/SectionCard';
-import type { ReportEvidence, ReportFact, ReportReferences, ReportVersion, ReportWorkspaceItem } from '../types';
+import { Markdown } from '../components/Markdown';
+import type { ReportEvidence, ReportFact, ReportReferences, ReportWorkspaceItem } from '../types';
 
 function reportFileUrl(path?: string): string {
   return path ? `/api/report-file?path=${encodeURIComponent(path)}` : '';
@@ -23,14 +24,13 @@ function ReportRow({ item, selected, onSelect }: {
   return (
     <button className={`report-row${selected ? ' report-row--selected' : ''}`} onClick={onSelect}>
       <ListRow>
-        <Tag kind={item.pdf_exists ? 'ok' : 'warn'}>{item.current_version ?? 'draft'}</Tag>
+        <Tag kind={item.pdf_exists ? 'ok' : 'warn'}>{item.pdf_exists ? 'PDF' : 'draft'}</Tag>
         <span className="row-title row-title--wrap">{item.title ?? item.report_id}</span>
         <span className="row-meta dim">{timeAgo(item.updated_at)}</span>
       </ListRow>
       <div className="report-row-sub">
         <code>{item.report_id}</code>
         <span>{item.evidence_mode}</span>
-        <span>{item.version_count ?? 0} version{item.version_count === 1 ? '' : 's'}</span>
       </div>
     </button>
   );
@@ -74,6 +74,7 @@ function ReferenceFactRow({ item, open, onToggle }: {
   const factId = item.fact.fact_id ?? '';
   const detail = useFactDetail(open && factId ? factId : null);
   const body = item.fact.body ?? detail.data?.fact?.body;
+  const loadingText = detail.isLoading ? 'Loading fact statement...' : 'Fact statement unavailable.';
   return (
     <div className={`report-ref-fact${open ? ' report-ref-fact--open' : ''}`}>
       <button className="report-ref-fact-head" onClick={onToggle}>
@@ -99,7 +100,9 @@ function ReferenceFactRow({ item, open, onToggle }: {
               <dd>{item.fact.path ?? 'unknown'}</dd>
             </span>
           </dl>
-          <pre>{body ?? (detail.isLoading ? 'Loading fact statement...' : 'Fact statement unavailable.')}</pre>
+          <div className={`report-ref-statement${body ? ' report-ref-statement--md' : ''}`}>
+            {body ? <Markdown text={body} /> : <span className="dim">{loadingText}</span>}
+          </div>
         </div>
       )}
     </div>
@@ -190,17 +193,20 @@ export function Reports() {
             <code>{current?.main_tex ?? selected?.main_tex ?? 'reports'}</code>
           </div>
           {versions.length > 0 && (
-            <select
-              className="report-version-select"
-              value={workspace?.selected_version ?? ''}
-              onChange={(event) => setSelectedVersion(event.target.value)}
-            >
-              {versions.map((version) => (
-                <option key={version.version} value={version.version}>
-                  {version.version}
-                </option>
-              ))}
-            </select>
+            <label className="report-version-control">
+              <span>Version</span>
+              <select
+                className="report-version-select"
+                value={workspace?.selected_version ?? ''}
+                onChange={(event) => setSelectedVersion(event.target.value)}
+              >
+                {versions.map((version) => (
+                  <option key={version.version} value={version.version}>
+                    {version.version}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
         </div>
         {pdfUrl ? (
