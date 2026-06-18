@@ -202,7 +202,7 @@ def test_handoff_includes_report_lookup_when_present():
             "reports_dir": "reports",
             "report_count": 1,
             "recent_reports": [{"report_id": "demo", "main_tex": "reports/demo/versions/v001/main.tex"}],
-            "templates": ["amsart"],
+            "templates": ["iteris-report"],
             "styles": ["theory"],
         }
     }

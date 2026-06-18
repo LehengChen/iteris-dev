@@ -1,0 +1,30 @@
+% Copyright 2026 Iteris contributors
+% SPDX-License-Identifier: Apache-2.0
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{iterisreport}[2026/06/18 Generic research report layout]
+
+\RequirePackage[T1]{fontenc}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{amsthm}
+\RequirePackage{mathtools}
+\RequirePackage{geometry}
+\RequirePackage{url}
+\RequirePackage[hidelinks]{hyperref}
+
+\geometry{margin=1.1in}
+\setlength{\emergencystretch}{3em}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\reportauthorurl}{https://github.com/frenzymath/iteris}
+\newcommand{\reportauthors}{Iteris\\{\small\url{\reportauthorurl}}}

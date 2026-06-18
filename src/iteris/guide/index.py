@@ -89,7 +89,7 @@ def build_project_index(root: Path) -> dict[str, Any]:
             "recover": "iteris recover",
             "monitor": "iteris monitor",
             "report_status": "iteris report status",
-            "report_new": "iteris report new --template amsart --style theory",
+            "report_new": "iteris report new --layout iteris-report --profile theory",
         },
     }
 

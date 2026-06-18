@@ -456,7 +456,6 @@ def lookup_report_status(project_root: Path) -> dict[str, Any]:
         "reports_dir": status.get("reports_dir"),
         "reports_exists": status.get("reports_exists"),
         "report_index": status.get("report_index"),
-        "third_party_tex_cache": status.get("third_party_tex_cache"),
         "stage_reports_dir": status.get("stage_reports_dir"),
         "fact_index": status.get("fact_index"),
         "report_count": status.get("report_count"),

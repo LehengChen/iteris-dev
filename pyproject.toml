@@ -75,6 +75,7 @@ include = ["iteris*"]
     "ui/client/src/**/*.css",
 ]
 "iteris.data" = ["*.md", "templates/*", "locales/*.json", "prompts/monitor/*/*.md"]
+"iteris.reporting" = ["latex_templates/iteris-report/*.sty"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

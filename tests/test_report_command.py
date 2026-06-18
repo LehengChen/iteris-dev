@@ -35,8 +35,7 @@ def test_report_status_json_empty_project(tmp_path):
     assert payload["reports_dir"] == "reports"
     assert payload["fact_index"] == "memory/facts/FACT_INDEX.jsonl"
     assert payload["report_count"] == 0
-    assert "amsart" in payload["templates"]
-    assert "siam" in payload["templates"]
+    assert payload["templates"] == ["iteris-report"]
     assert payload["styles"] == ["theory"]
     assert payload["latex"] is not None
 
@@ -70,19 +69,25 @@ def test_report_new_and_draft_use_relative_evidence_paths(tmp_path):
     main_tex = root / "reports" / "demo-report" / "versions" / "v001" / "main.tex"
     text = main_tex.read_text(encoding="utf-8")
     references_bib = root / "reports" / "demo-report" / "versions" / "v001" / "references.bib"
-    references_json = root / "reports" / "demo-report" / "references.json"
-    assert "\\documentclass{amsart}" in text
+    references_json = root / "reports" / "demo-report" / "versions" / "v001" / "references.json"
+    version_evidence = root / "reports" / "demo-report" / "versions" / "v001" / "evidence.json"
+    assert "\\documentclass[11pt]{article}" in text
+    assert "\\usepackage{iterisreport}" in text
+    assert "\\author{\\reportauthors}" in text
     assert "\\cite{" in text
-    assert "\\bibliographystyle{amsplain}" in text
+    assert "\\bibliographystyle{plain}" in text
     assert "\\bibliography{references}" in text
     assert "Evidence Register" in text
     assert "\\iterisref{" not in text
     assert "evidence.json" in text
     assert references_bib.exists()
     assert references_json.exists()
+    assert version_evidence.exists()
+    assert (root / "reports" / "demo-report" / "versions" / "v001" / "iterisreport.sty").exists()
     assert "memory/facts/fact-demo-main.md" in references_bib.read_text(encoding="utf-8")
     assert not _contains_text(json.loads(references_json.read_text(encoding="utf-8")), str(root))
     assert str(root) not in references_bib.read_text(encoding="utf-8")
+    assert "Iteris" not in text.replace("\\author{\\reportauthors}", "")
 
 
 def test_report_portable_mode_hides_evidence_appendix(tmp_path):
@@ -103,6 +108,7 @@ def test_report_portable_mode_hides_evidence_appendix(tmp_path):
     assert "\\bibliography{references}" not in text
     assert not (root / "reports" / "demo" / "versions" / "v001" / "references.bib").exists()
     assert (root / "reports" / "demo" / "evidence.json").exists()
+    assert (root / "reports" / "demo" / "versions" / "v001" / "evidence.json").exists()
 
 
 def test_report_evidence_generates_bibtex_references(tmp_path):
@@ -114,7 +120,7 @@ def test_report_evidence_generates_bibtex_references(tmp_path):
     by_key = {entry.citation_key: entry for entry in entries}
 
     expected_keys = {
-        citation_key_for_evidence_register("demo-report"),
+        citation_key_for_evidence_register("demo-report", version="v001"),
         citation_key_for_fact("fact:demo:main"),
         citation_key_for_verification("verify-goal"),
         citation_key_for_verification("verify-assembly"),
@@ -129,12 +135,12 @@ def test_report_evidence_generates_bibtex_references(tmp_path):
 
     fact_entry = by_key[citation_key_for_fact("fact:demo:main")]
     assert fact_entry.fields["howpublished"] == "Project file: memory/facts/fact-demo-main.md"
-    evidence_entry = by_key[citation_key_for_evidence_register("demo-report")]
-    assert evidence_entry.fields["howpublished"] == "Project file: reports/demo-report/evidence.json"
+    evidence_entry = by_key[citation_key_for_evidence_register("demo-report", version="v001")]
+    assert evidence_entry.fields["howpublished"] == "Project file: reports/demo-report/versions/v001/evidence.json"
 
     rendered = render_bibtex(entries)
     assert f"@misc{{{citation_key_for_fact('fact:demo:main')}," in rendered
-    assert r"Project file: \path{reports/demo-report/evidence.json}" in rendered
+    assert r"Project file: \path{reports/demo-report/versions/v001/evidence.json}" in rendered
     assert str(root) not in rendered
 
 
@@ -144,53 +150,40 @@ def test_report_build_commands_run_bibtex_when_references_exist(tmp_path):
     assert [command[0] for command in commands] == ["xelatex", "bibtex", "xelatex", "xelatex"]
 
 
-def test_report_auto_engine_prefers_pdflatex_for_siam(tmp_path):
+def test_report_auto_engine_uses_environment_preference(tmp_path):
     main_tex = tmp_path / "main.tex"
-    main_tex.write_text("\\documentclass[review]{siamart}\\begin{document}x\\end{document}", encoding="utf-8")
+    main_tex.write_text("\\documentclass[11pt]{article}\\begin{document}x\\end{document}", encoding="utf-8")
 
     engine = _source_preferred_engine(main_tex, {"preferred_engine": "xelatex", "engines": {"pdflatex": "/usr/bin/pdflatex"}})
 
-    assert engine == "pdflatex"
+    assert engine == "xelatex"
 
 
-def test_report_draft_new_version_can_switch_to_siam_template(tmp_path, monkeypatch):
+def test_report_draft_new_version_keeps_generic_layout(tmp_path):
     root = _report_fixture(tmp_path)
-
-    def fake_prepare(_root: Path, version_dir: Path, template_id: str) -> dict[str, Any]:
-        payload = {
-            "schema_version": "iteris.template_assets.v0",
-            "template": template_id,
-            "prepared": [{"file": "siamart.cls", "version_path": "siamart.cls"}],
-            "missing": [],
-        }
-        (version_dir / "template.assets.json").write_text(json.dumps(payload), encoding="utf-8")
-        (version_dir / "siamart.cls").write_text("% fake class for path assertions\n", encoding="utf-8")
-        (version_dir / "siamplain.bst").write_text("% fake bst for path assertions\n", encoding="utf-8")
-        return payload
-
-    monkeypatch.setattr("iteris.reporting.core.prepare_template_assets", fake_prepare)
     create = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "demo-report", "--json"])
     assert create.exit_code == 0, create.output
 
     draft = CliRunner().invoke(
         app,
-        ["report", "draft", str(root), "--report-id", "demo-report", "--new-version", "--template", "siam", "--json"],
+        ["report", "draft", str(root), "--report-id", "demo-report", "--new-version", "--json"],
     )
 
     assert draft.exit_code == 0, draft.output
     payload = json.loads(draft.output)
     assert payload["version"] == "v002"
-    assert payload["template"] == "siam"
+    assert payload["template"] == "iteris-report"
     main_tex = root / "reports" / "demo-report" / "versions" / "v002" / "main.tex"
     text = main_tex.read_text(encoding="utf-8")
-    assert "\\documentclass[review]{siamart}" in text
-    assert "\\begin{keywords}" in text
-    assert "\\begin{AMS}" in text
-    assert "\\bibliographystyle{siamplain}" in text
+    assert "\\documentclass[11pt]{article}" in text
+    assert "\\usepackage{iterisreport}" in text
+    assert "\\bibliographystyle{plain}" in text
     report = json.loads((root / "reports" / "demo-report" / "report.json").read_text(encoding="utf-8"))
-    assert report["versions"][0]["template"] == "amsart"
-    assert report["versions"][1]["template"] == "siam"
+    assert report["versions"][0]["template"] == "iteris-report"
+    assert report["versions"][1]["template"] == "iteris-report"
     assert (root / "reports" / "demo-report" / "versions" / "v002" / "template.assets.json").exists()
+    assert (root / "reports" / "demo-report" / "versions" / "v002" / "references.json").exists()
+    assert (root / "reports" / "demo-report" / "versions" / "v002" / "evidence.json").exists()
 
 
 def test_report_lookup_triggered_by_latex_keywords(tmp_path):

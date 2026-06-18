@@ -39,11 +39,11 @@ Optional: put reference PDFs in `references/` after `new`.
 - `iteris review` — bundle artifacts for human review
 - `iteris report status/new/draft/build` — create a versioned LaTeX report from verified project evidence
 
-Report workspaces live under `reports/`.  The MVP template adapter is
-`amsart`; Iteris stores adapter code and manifest metadata, not third-party
-`.cls/.sty/.bst` files.  Internal evidence stays in `evidence.json` with
-project-relative paths and fact ids.  Switch a draft to portable sharing mode
-with `iteris report config --evidence portable` before rebuilding.
+Report workspaces live under `reports/`.  The MVP layout is `iteris-report`,
+a generic Apache-2.0 LaTeX report layout maintained by this project.  Internal
+evidence stays in `evidence.json` with project-relative paths and fact ids.
+Switch a draft to portable sharing mode with
+`iteris report config --evidence portable` before rebuilding.
 
 ## Evolve: generalize across a project family
 

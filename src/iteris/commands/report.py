@@ -10,6 +10,7 @@ from iteris import log
 from iteris.commands.common import require_public_project
 from iteris.reporting import add_feedback, build_report, configure_report, create_report, draft_report, report_status
 from iteris.reporting.latex import check_latex_environment
+from iteris.reporting.templates import DEFAULT_STYLE_ID, DEFAULT_TEMPLATE_ID
 
 app = typer.Typer(help="Draft, version, and build research reports from verified Iteris projects.")
 feedback_app = typer.Typer(help="Record human feedback for a report.")
@@ -30,9 +31,9 @@ def status(
         {
             "Reports": str(payload["report_count"]),
             "Reports dir": payload["reports_dir"],
-            "Template cache": payload["third_party_tex_cache"],
+            "Layouts": ", ".join(payload.get("templates") or []),
             "LaTeX engine": (payload.get("latex") or {}).get("preferred_engine") or "(missing)",
-            "amsart": "available" if (payload.get("latex") or {}).get("amsart_available") else "not found",
+            "Standard LaTeX": "available" if (payload.get("latex") or {}).get("standard_layout_available") else "not found",
         }
     )
     rows = [
@@ -51,8 +52,8 @@ def new(
     project_path: str = typer.Argument(".", help="Iteris project path."),
     report_id: str | None = typer.Option(None, "--report-id", help="Stable report id under reports/."),
     title: str | None = typer.Option(None, "--title", help="Report title."),
-    template: str = typer.Option("amsart", "--template", help="LaTeX template adapter: amsart or siam."),
-    style: str = typer.Option("theory", "--style", help="Writing profile. MVP supports theory."),
+    template: str = typer.Option(DEFAULT_TEMPLATE_ID, "--layout", "--template", help="Report layout. MVP supports iteris-report."),
+    style: str = typer.Option(DEFAULT_STYLE_ID, "--profile", "--style", help="Writing profile. MVP supports theory."),
     evidence: str = typer.Option("linked", "--evidence", help="Evidence mode: linked or portable."),
     no_draft: bool = typer.Option(False, "--no-draft", help="Create metadata only; do not render main.tex."),
     json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON."),
@@ -86,8 +87,8 @@ def draft(
     report_id: str = typer.Option(..., "--report-id", help="Report id under reports/."),
     new_version: bool = typer.Option(False, "--new-version", help="Create a new source version instead of rewriting the current one."),
     evidence: str | None = typer.Option(None, "--evidence", help="Override evidence mode for this draft: linked or portable."),
-    template: str | None = typer.Option(None, "--template", help="Override template for this draft/version: amsart or siam."),
-    style: str | None = typer.Option(None, "--style", help="Override writing profile for this draft/version."),
+    template: str | None = typer.Option(None, "--layout", "--template", help="Override report layout for this draft/version."),
+    style: str | None = typer.Option(None, "--profile", "--style", help="Override writing profile for this draft/version."),
     json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON."),
 ) -> None:
     """Render or re-render the report LaTeX source."""
@@ -141,10 +142,8 @@ def doctor(
     log.key_value(
         {
             "Engine": payload.get("preferred_engine") or "(missing)",
-            "amsart.cls": payload.get("amsart_cls") or "(not found)",
-            "amsplain.bst": payload.get("amsplain_bst") or "(not found)",
-            "siamart.cls": payload.get("siamart_cls") or "(cache/download on draft)",
-            "siamplain.bst": payload.get("siamplain_bst") or "(cache/download on draft)",
+            "article.cls": payload.get("article_cls") or "(not found)",
+            "plain.bst": payload.get("plain_bst") or "(not found)",
             "BibTeX": "available" if payload.get("bibtex_available") else "(missing)",
             "Install hint": payload.get("install_hint") or "",
         }

@@ -101,56 +101,15 @@ def check_latex_environment() -> dict[str, Any]:
     engines = {name: shutil.which(name) or "" for name in ["latexmk", "tectonic", "xelatex", "pdflatex"]}
     tools = {"bibtex": shutil.which("bibtex") or ""}
     kpsewhich = shutil.which("kpsewhich") or ""
-    amsart_path = ""
-    amsplain_path = ""
-    siamplain_path = ""
-    siamart_path = ""
+    article_path = ""
+    plain_path = ""
     if kpsewhich:
         try:
-            result = subprocess.run(
-                [kpsewhich, "amsart.cls"],
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=False,
-                timeout=10,
-            )
-            amsart_path = result.stdout.strip() if result.returncode == 0 else ""
-            result = subprocess.run(
-                [kpsewhich, "amsplain.bst"],
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=False,
-                timeout=10,
-            )
-            amsplain_path = result.stdout.strip() if result.returncode == 0 else ""
-            result = subprocess.run(
-                [kpsewhich, "siamplain.bst"],
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=False,
-                timeout=10,
-            )
-            siamplain_path = result.stdout.strip() if result.returncode == 0 else ""
-            for cls_name in ["siamart251216.cls", "siamart250211.cls", "siamart220329.cls", "siamart.cls"]:
-                result = subprocess.run(
-                    [kpsewhich, cls_name],
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    check=False,
-                    timeout=10,
-                )
-                if result.returncode == 0 and result.stdout.strip():
-                    siamart_path = result.stdout.strip()
-                    break
+            article_path = _kpsewhich(kpsewhich, "article.cls")
+            plain_path = _kpsewhich(kpsewhich, "plain.bst")
         except (OSError, subprocess.SubprocessError):
-            amsart_path = ""
-            amsplain_path = ""
-            siamplain_path = ""
-            siamart_path = ""
+            article_path = ""
+            plain_path = ""
     available = [name for name, path in engines.items() if path]
     return {
         "schema_version": "iteris.latex_environment.v0",
@@ -159,15 +118,24 @@ def check_latex_environment() -> dict[str, Any]:
         "preferred_engine": choose_engine(engines),
         "has_engine": bool(available),
         "kpsewhich": kpsewhich,
-        "amsart_cls": amsart_path,
-        "amsplain_bst": amsplain_path,
-        "siamart_cls": siamart_path,
-        "siamplain_bst": siamplain_path,
-        "amsart_available": bool(amsart_path) or bool(engines.get("tectonic")),
-        "siam_available": bool(siamart_path and siamplain_path),
+        "article_cls": article_path,
+        "plain_bst": plain_path,
+        "standard_layout_available": bool(article_path) or bool(engines.get("tectonic")),
         "bibtex_available": bool(tools["bibtex"]) or bool(engines.get("latexmk")) or bool(engines.get("tectonic")),
         "install_hint": latex_install_hint(),
     }
+
+
+def _kpsewhich(kpsewhich: str, filename: str) -> str:
+    result = subprocess.run(
+        [kpsewhich, filename],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=10,
+    )
+    return result.stdout.strip() if result.returncode == 0 else ""
 
 
 def choose_engine(engines: dict[str, str] | None = None) -> str:
@@ -279,10 +247,7 @@ def _build_commands(engine: str, main_name: str, build_dir: Path, *, needs_bibte
 
 
 def _source_preferred_engine(main_tex: Path, env: dict[str, Any]) -> str:
-    text = main_tex.read_text(encoding="utf-8", errors="replace")[:2000]
-    engines = env.get("engines") if isinstance(env.get("engines"), dict) else {}
-    if "siamart" in text and engines.get("pdflatex"):
-        return "pdflatex"
+    del main_tex
     return str(env.get("preferred_engine") or "")
 
 

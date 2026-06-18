@@ -24,12 +24,9 @@ DEFAULT_GITIGNORE = [
     ".iteris/logs/",
     ".iteris/codex_home/",
     "",
-    "# Report-local build and third-party template caches",
+    "# Report-local build outputs",
     "third_party_tex/",
     "reports/*/build/",
-    "reports/*/versions/*/*.cls",
-    "reports/*/versions/*/*.sty",
-    "reports/*/versions/*/*.bst",
     "",
 ]
 
