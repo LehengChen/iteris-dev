@@ -27,6 +27,9 @@ DEFAULT_GITIGNORE = [
     "# Report-local build and third-party template caches",
     "third_party_tex/",
     "reports/*/build/",
+    "reports/*/versions/*/*.cls",
+    "reports/*/versions/*/*.sty",
+    "reports/*/versions/*/*.bst",
     "",
 ]
 
