@@ -26,11 +26,11 @@ function ReportRow({ item, selected, onSelect }: {
       <ListRow>
         <Tag kind={item.pdf_exists ? 'ok' : 'warn'}>{item.pdf_exists ? 'PDF' : 'draft'}</Tag>
         <span className="row-title row-title--wrap">{item.title ?? item.report_id}</span>
-        <span className="row-meta dim">{timeAgo(item.updated_at)}</span>
       </ListRow>
       <div className="report-row-sub">
         <code>{item.report_id}</code>
         <span>{item.evidence_mode}</span>
+        <span>{timeAgo(item.updated_at)}</span>
       </div>
     </button>
   );
@@ -127,11 +127,11 @@ function ReferenceRow({ item, open, onToggle }: {
       <button className="report-ref-fact-head" onClick={onToggle}>
         <span className="report-ref-label">{item.label}</span>
         <span className="report-ref-main">
-          <span>{titleForEntry(item)}</span>
+          <span className="report-ref-title" title={titleForEntry(item)}>{titleForEntry(item)}</span>
           <span className="report-ref-meta">
             <em>{item.entry.kind ?? 'reference'}</em>
             {item.factLabel && <em>{item.factLabel}</em>}
-            {item.entry.key && <code>{item.entry.key}</code>}
+            {item.entry.key && <code title={item.entry.key}>{item.entry.key}</code>}
           </span>
         </span>
       </button>
@@ -194,12 +194,12 @@ function EvidenceSidebar({
     <aside className="report-side">
       <SectionCard title="References">
         {evidence?.answer?.verified_positive_result && (
-          <div className="report-side-block">
+          <div className="report-side-block report-side-block--summary">
             <div className="report-side-title">Verified result</div>
             <p className="report-side-text">{evidence.answer.verified_positive_result}</p>
           </div>
         )}
-        <div className="report-side-block">
+        <div className="report-side-block report-side-block--refs">
           <div className="report-side-title">Cited references · {items.length}</div>
           <div className="report-ref-list">
             {items.length === 0 && <span className="dim">No cited references recorded.</span>}
@@ -238,7 +238,7 @@ export function Reports() {
   return (
     <div className="reports-view">
       <section className="reports-list">
-        <SectionCard title={`Reports · ${data?.report_count ?? 0}`}>
+        <SectionCard title={`Report workspaces · ${data?.report_count ?? 0}`}>
           {isLoading && <SectionEmpty>Loading reports…</SectionEmpty>}
           {!isLoading && items.length === 0 && <SectionEmpty>No reports yet.</SectionEmpty>}
           {items.map((item) => (
@@ -257,13 +257,13 @@ export function Reports() {
 
       <section className="report-pdf-pane">
         <div className="report-pdf-head">
-          <div>
+          <div className="report-pdf-head-main">
             <h2>{workspace?.report?.title ?? selected?.title ?? 'Reports'}</h2>
             <code>{current?.main_tex ?? selected?.main_tex ?? 'reports'}</code>
           </div>
           {versions.length > 0 && (
             <label className="report-version-control">
-              <span>Version</span>
+              <span>Report version</span>
               <select
                 className="report-version-select"
                 value={workspace?.selected_version ?? ''}
