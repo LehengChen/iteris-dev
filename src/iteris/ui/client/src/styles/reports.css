@@ -201,6 +201,7 @@
   padding: 2px 2px 2px 0;
 }
 .report-ref-fact {
+  flex: 0 0 auto;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-primary);
@@ -208,7 +209,6 @@
 }
 .report-ref-fact--open {
   border-color: var(--accent);
-  overflow: visible;
   box-shadow: 0 0 0 2px var(--accent-ring);
 }
 .report-ref-fact-head {
