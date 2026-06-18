@@ -58,6 +58,17 @@ export interface ReportFact {
   body?: string;
 }
 
+export interface ReportReferenceEntry {
+  key?: string;
+  entry_type?: string;
+  kind?: string;
+  role?: string;
+  fact_id?: string;
+  request_id?: string;
+  path?: string;
+  fields?: Record<string, string>;
+}
+
 export interface ReportEvidence {
   schema_version?: string;
   report_id?: string;
@@ -87,7 +98,7 @@ export interface ReportReferences {
   include_internal?: boolean;
   bibliography?: string;
   omitted_reason?: string;
-  entries?: Array<{ key?: string; kind?: string; role?: string; path?: string; fields?: Record<string, string> }>;
+  entries?: ReportReferenceEntry[];
   fact_labels?: Array<{ label?: string; fact_id?: string; citation_key?: string; path?: string }>;
   sections?: Array<{ section_id?: string; cite_keys?: string[]; uses?: Record<string, unknown> }>;
   fact_graph?: { checked_fact_ids?: string[] };
@@ -104,6 +115,7 @@ export interface ReportWorkspaceDetail {
   versions?: ReportVersion[];
   selected_version?: string;
   current?: ReportVersion | null;
+  cited_keys?: string[];
   evidence?: ReportEvidence | null;
   references?: ReportReferences | null;
   template_lock?: Record<string, unknown> | null;

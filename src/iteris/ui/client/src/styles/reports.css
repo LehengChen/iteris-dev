@@ -229,6 +229,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.report-ref-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.report-ref-meta em {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-style: normal;
+}
+.report-ref-meta code { min-width: 0; }
 .report-ref-body {
   border-top: 1px solid var(--bg-tertiary);
   background: var(--bg-secondary);

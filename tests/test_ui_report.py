@@ -51,6 +51,7 @@ def test_report_workspaces_and_detail_are_project_relative(tmp_path):
     assert detail["selected_version"] == "v001"
     assert detail["current"]["main_tex"] == "reports/demo-report/versions/v001/main.tex"
     assert detail["current"]["pdf"] == "reports/demo-report/versions/v001/main.pdf"
+    assert detail["cited_keys"] == []
     assert detail["evidence"]["schema_version"] == "iteris.report_evidence.v0"
     assert detail["references"]["schema_version"] == "iteris.report_references.v0"
     assert detail["notice"].startswith("portable output")
@@ -65,6 +66,53 @@ def test_report_workspace_rejects_invalid_report_id(tmp_path):
 
     assert detail["schema_version"] == "iteris.ui_report_workspace.v0"
     assert detail["report"] is None
+
+
+def test_report_workspace_reports_actual_latex_citation_order(tmp_path):
+    root = tmp_path / "project"
+    init_project(root)
+    _invoke(
+        [
+            "report",
+            "new",
+            str(root),
+            "--report-id",
+            "demo-report",
+            "--title",
+            "Demo Report",
+            "--evidence",
+            "linked",
+            "--json",
+        ]
+    )
+    version = root / "reports" / "demo-report" / "versions" / "v001"
+    (version / "main.tex").write_text(
+        "\\cite{ref-b, ref-a}\n"
+        "% \\cite{commented-out}\n"
+        "\\cite[see][p. 3]{ref-b,ref-c}\n"
+        "\\parencite{ref-d}\n",
+        encoding="utf-8",
+    )
+    (version / "references.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "iteris.report_references.v0",
+                "include_internal": True,
+                "entries": [
+                    {"key": "ref-a"},
+                    {"key": "ref-b"},
+                    {"key": "ref-c"},
+                    {"key": "ref-d"},
+                    {"key": "commented-out"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    detail = _invoke(["tool", "ui", "report-workspace", str(root), "--report-id", "demo-report", "--json"])
+
+    assert detail["cited_keys"] == ["ref-b", "ref-a", "ref-c", "ref-d"]
 
 
 def _contains_text(value, needle: str) -> bool:

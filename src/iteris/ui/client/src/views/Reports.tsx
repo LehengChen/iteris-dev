@@ -4,7 +4,7 @@ import { timeAgo } from '../lib/format';
 import { Tag } from '../components/Tag';
 import { ListRow, SectionCard, SectionEmpty } from '../components/SectionCard';
 import { Markdown } from '../components/Markdown';
-import type { ReportEvidence, ReportFact, ReportReferences, ReportWorkspaceItem } from '../types';
+import type { ReportEvidence, ReportFact, ReportReferenceEntry, ReportReferences, ReportWorkspaceItem } from '../types';
 
 function reportFileUrl(path?: string): string {
   return path ? `/api/report-file?path=${encodeURIComponent(path)}` : '';
@@ -36,72 +36,139 @@ function ReportRow({ item, selected, onSelect }: {
   );
 }
 
-interface OrderedFact {
-  fact: ReportFact;
+interface OrderedReference {
+  id: string;
   label: string;
-  citationKey?: string;
+  entry: ReportReferenceEntry;
+  fact?: ReportFact;
+  factLabel?: string;
 }
 
-function orderedReferenceFacts(evidence?: ReportEvidence | null, references?: ReportReferences | null): OrderedFact[] {
+function orderedReferences(
+  evidence?: ReportEvidence | null,
+  references?: ReportReferences | null,
+  citedKeys?: string[],
+): OrderedReference[] {
   const facts = evidence?.facts ?? [];
   const factById = new Map<string, ReportFact>();
   for (const fact of facts) {
     if (fact.fact_id) factById.set(fact.fact_id, fact);
   }
-  const out: OrderedFact[] = [];
-  const seen = new Set<string>();
-  for (const item of references?.fact_labels ?? []) {
-    if (!item.fact_id || !factById.has(item.fact_id)) continue;
-    seen.add(item.fact_id);
-    out.push({
-      fact: factById.get(item.fact_id)!,
-      label: item.label || factLabel(item.fact_id),
-      citationKey: item.citation_key,
-    });
+  const entryByKey = new Map<string, ReportReferenceEntry>();
+  for (const entry of references?.entries ?? []) {
+    if (entry.key) entryByKey.set(entry.key, entry);
   }
-  facts.forEach((fact, index) => {
-    if (!fact.fact_id || seen.has(fact.fact_id)) return;
-    out.push({ fact, label: `F${index + 1}` });
+  const factLabelByKey = new Map<string, string>();
+  for (const item of references?.fact_labels ?? []) {
+    if (item.citation_key) factLabelByKey.set(item.citation_key, item.label || factLabel(item.fact_id ?? ''));
+  }
+  const out: OrderedReference[] = [];
+  referenceKeyOrder(references, citedKeys).forEach((key, index) => {
+    const entry = entryByKey.get(key);
+    if (!entry) return;
+    const factId = entry.fact_id || '';
+    const item: OrderedReference = { id: key, label: `R${index + 1}`, entry };
+    const fact = factId ? factById.get(factId) : undefined;
+    const label = factLabelByKey.get(key);
+    if (fact) item.fact = fact;
+    if (label) item.factLabel = label;
+    out.push(item);
   });
   return out;
 }
 
-function ReferenceFactRow({ item, open, onToggle }: {
-  item: OrderedFact;
+function referenceKeyOrder(references?: ReportReferences | null, citedKeys?: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (key?: string) => {
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      out.push(key);
+    }
+  };
+  if (citedKeys?.length) {
+    citedKeys.forEach(push);
+    return out;
+  }
+  for (const section of references?.sections ?? []) {
+    (section.cite_keys ?? []).forEach(push);
+  }
+  if (out.length > 0) return out;
+  for (const item of references?.fact_labels ?? []) push(item.citation_key);
+  return out;
+}
+
+function titleForEntry(item: OrderedReference): string {
+  return item.fact?.claim_summary ?? item.entry.fields?.title ?? item.entry.path ?? item.entry.key ?? item.id;
+}
+
+function metadataText(item: OrderedReference): string {
+  const fields = item.entry.fields ?? {};
+  return [
+    fields.title ? `**Title:** ${fields.title}` : '',
+    fields.howpublished ? `**Source:** ${fields.howpublished}` : '',
+    fields.note ? `**Note:** ${fields.note}` : '',
+    item.entry.path ? `**Path:** \`${item.entry.path}\`` : '',
+    item.entry.request_id ? `**Request:** \`${item.entry.request_id}\`` : '',
+  ].filter(Boolean).join('\n\n') || 'Reference metadata unavailable.';
+}
+
+function ReferenceRow({ item, open, onToggle }: {
+  item: OrderedReference;
   open: boolean;
   onToggle: () => void;
 }) {
-  const factId = item.fact.fact_id ?? '';
+  const factId = item.entry.fact_id ?? item.fact?.fact_id ?? '';
   const detail = useFactDetail(open && factId ? factId : null);
-  const body = item.fact.body ?? detail.data?.fact?.body;
+  const body = item.fact?.body ?? detail.data?.fact?.body;
   const loadingText = detail.isLoading ? 'Loading fact statement...' : 'Fact statement unavailable.';
   return (
     <div className={`report-ref-fact${open ? ' report-ref-fact--open' : ''}`}>
       <button className="report-ref-fact-head" onClick={onToggle}>
         <span className="report-ref-label">{item.label}</span>
         <span className="report-ref-main">
-          <span>{item.fact.claim_summary ?? factId}</span>
-          {item.citationKey && <code>{item.citationKey}</code>}
+          <span>{titleForEntry(item)}</span>
+          <span className="report-ref-meta">
+            <em>{item.entry.kind ?? 'reference'}</em>
+            {item.factLabel && <em>{item.factLabel}</em>}
+            {item.entry.key && <code>{item.entry.key}</code>}
+          </span>
         </span>
       </button>
       {open && (
         <div className="report-ref-body">
           <dl>
             <span>
-              <dt>status</dt>
-              <dd>{item.fact.status ?? 'unknown'}</dd>
+              <dt>kind</dt>
+              <dd>{item.entry.kind ?? 'reference'}</dd>
             </span>
             <span>
-              <dt>verification</dt>
-              <dd>{item.fact.verification ?? 'none'}</dd>
+              <dt>role</dt>
+              <dd>{item.entry.role ?? 'none'}</dd>
             </span>
             <span>
               <dt>file</dt>
-              <dd>{item.fact.path ?? 'unknown'}</dd>
+              <dd>{item.entry.path ?? item.fact?.path ?? 'unknown'}</dd>
             </span>
+            {item.fact && (
+              <>
+                <span>
+                  <dt>status</dt>
+                  <dd>{item.fact.status ?? 'unknown'}</dd>
+                </span>
+                <span>
+                  <dt>verification</dt>
+                  <dd>{item.fact.verification ?? item.entry.request_id ?? 'none'}</dd>
+                </span>
+              </>
+            )}
           </dl>
-          <div className={`report-ref-statement${body ? ' report-ref-statement--md' : ''}`}>
-            {body ? <Markdown text={body} /> : <span className="dim">{loadingText}</span>}
+          <div className="report-ref-statement report-ref-statement--md">
+            {factId ? (
+              body ? <Markdown text={body} /> : <span className="dim">{loadingText}</span>
+            ) : (
+              <Markdown text={metadataText(item)} />
+            )}
           </div>
         </div>
       )}
@@ -112,15 +179,17 @@ function ReferenceFactRow({ item, open, onToggle }: {
 function EvidenceSidebar({
   evidence,
   references,
+  citedKeys,
 }: {
   evidence?: ReportEvidence | null;
   references?: ReportReferences | null;
+  citedKeys?: string[];
 }) {
-  const facts = orderedReferenceFacts(evidence, references);
-  const [openFactId, setOpenFactId] = useState<string | null>(facts[0]?.fact.fact_id ?? null);
+  const items = orderedReferences(evidence, references, citedKeys);
+  const [openRefId, setOpenRefId] = useState<string | null>(items[0]?.id ?? null);
   useEffect(() => {
-    setOpenFactId(facts[0]?.fact.fact_id ?? null);
-  }, [evidence?.report_id, evidence?.version, references?.include_internal]);
+    setOpenRefId(items[0]?.id ?? null);
+  }, [evidence?.report_id, evidence?.version, references?.include_internal, citedKeys?.join('|')]);
   return (
     <aside className="report-side">
       <SectionCard title="References">
@@ -131,15 +200,15 @@ function EvidenceSidebar({
           </div>
         )}
         <div className="report-side-block">
-          <div className="report-side-title">Facts in reference order · {facts.length}</div>
+          <div className="report-side-title">Cited references · {items.length}</div>
           <div className="report-ref-list">
-            {facts.length === 0 && <span className="dim">No checked facts recorded.</span>}
-            {facts.map((fact) => (
-              <ReferenceFactRow
-                key={fact.fact.fact_id ?? fact.label}
-                item={fact}
-                open={openFactId === fact.fact.fact_id}
-                onToggle={() => setOpenFactId(openFactId === fact.fact.fact_id ? null : fact.fact.fact_id ?? null)}
+            {items.length === 0 && <span className="dim">No cited references recorded.</span>}
+            {items.map((item) => (
+              <ReferenceRow
+                key={item.id}
+                item={item}
+                open={openRefId === item.id}
+                onToggle={() => setOpenRefId(openRefId === item.id ? null : item.id)}
               />
             ))}
           </div>
@@ -222,6 +291,7 @@ export function Reports() {
       <EvidenceSidebar
         evidence={workspace?.evidence}
         references={workspace?.references}
+        citedKeys={workspace?.cited_keys}
       />
     </div>
   );

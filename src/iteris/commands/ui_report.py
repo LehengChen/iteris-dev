@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,7 @@ def report_workspace(
     references = _read_version_json(version_dir, "references.json") if version_dir else None
     template_lock = _read_version_json(version_dir, "template.lock.json") if version_dir else None
     current = next((item for item in versions if item.get("version") == selected), None)
+    cited_keys = _cited_reference_keys(root, current, references)
 
     payload = {
         "schema_version": "iteris.ui_report_workspace.v0",
@@ -70,6 +72,7 @@ def report_workspace(
         "versions": versions,
         "selected_version": selected,
         "current": current,
+        "cited_keys": cited_keys,
         "evidence": evidence,
         "references": references,
         "template_lock": template_lock,
@@ -166,6 +169,42 @@ def _read_version_json(version_dir: Path | None, filename: str) -> Any:
         return None
     value = read_json(version_dir / filename, default=None)
     return value if isinstance(value, dict) else None
+
+
+def _cited_reference_keys(root: Path, current: dict[str, Any] | None, references: dict[str, Any] | None) -> list[str]:
+    if not current:
+        return []
+    rel = str(current.get("main_tex") or "")
+    if not rel:
+        return []
+    path = root / rel
+    if not path.is_file():
+        return []
+    text = _strip_latex_comments(path.read_text(encoding="utf-8", errors="replace"))
+    all_keys = _reference_entry_keys(references)
+    out: list[str] = []
+    seen: set[str] = set()
+    for match in re.finditer(r"\\(?:[A-Za-z]*cite[A-Za-z]*|nocite)(?:\s*\[[^\]]*\]){0,2}\s*\{([^}]*)\}", text):
+        for key in [item.strip() for item in match.group(1).split(",")]:
+            keys = all_keys if key == "*" else [key]
+            for item in keys:
+                if item and item not in seen:
+                    seen.add(item)
+                    out.append(item)
+    return out
+
+
+def _strip_latex_comments(text: str) -> str:
+    return "\n".join(re.split(r"(?<!\\)%", line, maxsplit=1)[0] for line in text.splitlines())
+
+
+def _reference_entry_keys(references: dict[str, Any] | None) -> list[str]:
+    entries = references.get("entries") if isinstance(references, dict) else []
+    out: list[str] = []
+    for entry in entries if isinstance(entries, list) else []:
+        if isinstance(entry, dict) and entry.get("key"):
+            out.append(str(entry["key"]))
+    return out
 
 
 def _file_record(root: Path, rel: str) -> dict[str, Any]:
