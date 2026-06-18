@@ -75,6 +75,8 @@ def build_project_index(root: Path) -> dict[str, Any]:
             "operator": "docs/OPERATOR.md",
             "task_pool": "tasks/TASK_POOL.json",
             "facts_index": "memory/facts/FACT_INDEX.jsonl",
+            "reports": "reports",
+            "report_index": "reports/REPORT_INDEX.jsonl",
             "rolling_report": ".iteris/supervision/REPORT.md",
             "family_memory": "memory/family/FAMILY_INDEX.jsonl",
         },
@@ -86,6 +88,8 @@ def build_project_index(root: Path) -> dict[str, Any]:
             "observe_ui": "iteris dashboard",
             "recover": "iteris recover",
             "monitor": "iteris monitor",
+            "report_status": "iteris report status",
+            "report_new": "iteris report new --template amsart --style theory",
         },
     }
 

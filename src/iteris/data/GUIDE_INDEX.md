@@ -34,6 +34,7 @@ Iteris is a goal-driven research agent workspace. A human usually starts with
 | `sources/` | Primary problem statement |
 | `references/` | Papers, notes, PDFs |
 | `results/` | Terminal answer artifacts |
+| `reports/` | Versioned LaTeX/report workspaces |
 | `memory/facts/` | Durable verified facts |
 | `tasks/TASK_POOL.json` | Task frontier |
 | `STATUS.md` | Human-readable project phase |
@@ -49,6 +50,7 @@ Iteris is a goal-driven research agent workspace. A human usually starts with
 | New / install / concepts | This GUIDE_INDEX | `doctor` |
 | Discuss the problem | Project `.iteris/INDEX.md` | `read_status_md`, project OPERATOR |
 | Track progress | Project INDEX | `status`, optionally `evolve_status` |
+| LaTeX / report / paper writing | Project INDEX | `report_status` |
 | Start or resume run | Project INDEX | `status`, suggest `recover` if needed |
 | Evolve family | Project INDEX (role=family_root or family_child) | `evolve_status`, `read_evolve_json` |
 | Infrastructure / layout | This GUIDE_INDEX | `doctor` |
@@ -60,6 +62,8 @@ Iteris is a goal-driven research agent workspace. A human usually starts with
 - Family-level scheduling uses the **direction pool** (`generalize/EVOLVE.json`), not "frontier"
 - Descendants search family memory by default; re-verify locally before relying on it
 - Worker session: `iteris-<project>`; evolve master: `iteris-evolve-<project>`
+- Formal report work uses top-level `reports/`, not evolve stage reports under `artifacts/reports/`
+- Report evidence files reference the fact graph with project-relative paths; portable mode hides internal evidence from rendered LaTeX without deleting it
 
 ## Document layers
 

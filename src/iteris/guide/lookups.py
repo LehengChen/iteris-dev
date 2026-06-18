@@ -445,6 +445,34 @@ def lookup_evolve_status(project_root: Path) -> dict[str, Any]:
     }
 
 
+def lookup_report_status(project_root: Path) -> dict[str, Any]:
+    from iteris.reporting import report_status
+
+    status = report_status(project_root.resolve(), include_latex=False)
+    latex = status.get("latex") if isinstance(status.get("latex"), dict) else {}
+    return {
+        "schema_version": "iteris.monitor_lookup.v0",
+        "lookup": "report_status",
+        "reports_dir": status.get("reports_dir"),
+        "reports_exists": status.get("reports_exists"),
+        "report_index": status.get("report_index"),
+        "third_party_tex_cache": status.get("third_party_tex_cache"),
+        "stage_reports_dir": status.get("stage_reports_dir"),
+        "fact_index": status.get("fact_index"),
+        "report_count": status.get("report_count"),
+        "recent_reports": status.get("recent_reports"),
+        "templates": status.get("templates"),
+        "styles": status.get("styles"),
+        "cli": status.get("cli"),
+        "switches": status.get("switches"),
+        "note": (
+            "Formal reports live under reports/. Evidence JSON references the fact graph "
+            "with project-relative paths; portable mode hides the internal evidence appendix "
+            "from rendered LaTeX without deleting evidence files."
+        ),
+    }
+
+
 def lookup_read_status_md(project_root: Path) -> dict[str, Any]:
     path = project_root / "STATUS.md"
     if not path.exists():
@@ -480,6 +508,8 @@ def default_lookups(project_root: Path | None) -> dict[str, Any]:
         payload["evolve_status"] = lookup_evolve_status(root)
     if role == ROLE_FAMILY_ROOT:
         payload["read_evolve_json"] = lookup_read_evolve_json(root)
+    if (root / "reports").is_dir() and any((root / "reports").glob("*/report.json")):
+        payload["report_status"] = lookup_report_status(root)
     return payload
 
 
@@ -494,6 +524,12 @@ _KEYWORD_LOOKUPS = {
     "run": "status",
     "recover": "status",
     "phase": "read_status_md",
+    "report": "report_status",
+    "latex": "report_status",
+    ".tex": "report_status",
+    "paper": "report_status",
+    "报告": "report_status",
+    "论文": "report_status",
 }
 
 
@@ -511,6 +547,8 @@ def lookups_for_message(project_root: Path | None, message: str, *, base: dict[s
                 result["status"] = lookup_status(root)
             elif lookup_name == "read_status_md":
                 result["read_status_md"] = lookup_read_status_md(root)
+            elif lookup_name == "report_status":
+                result["report_status"] = lookup_report_status(root)
     return result
 
 

@@ -24,6 +24,10 @@ venv/
 .iteris/monitor/
 artifacts/
 
+# Report-local build and third-party template caches
+third_party_tex/
+reports/*/build/
+
 # Documentation build artifacts
 *.aux
 *.log

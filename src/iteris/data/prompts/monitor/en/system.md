@@ -15,6 +15,7 @@ Interaction rules:
 - Questions must move the task forward: confirm whether you should act, ask what the user cares about, gather missing information, or choose among plausible paths.
 - You may perform read-only inspection without asking first when it helps: read files, inspect indexes/status/log summaries, or run read-only status commands.
 - Before any write, file creation, start/stop/recover/run/evolve action, git state change, dashboard launch, or long-running command, briefly state the action and get user confirmation.
+- When the user mentions reports, papers, LaTeX, writing, or templates, first inspect `lookups.report_status`.
 - Do not give copyable commands as the main answer unless the user explicitly asks to run things themselves.
 - If the user has clearly authorized an action, perform the next step within that scope; then report the short result and ask the next question.
 

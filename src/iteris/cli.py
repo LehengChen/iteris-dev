@@ -92,6 +92,7 @@ from iteris.commands.message import app as message_app  # noqa: E402
 from iteris.commands.monitor import monitor  # noqa: E402
 from iteris.commands.new import new  # noqa: E402
 from iteris.commands.recover import recover  # noqa: E402
+from iteris.commands.report import app as report_app  # noqa: E402
 from iteris.commands.run import bootstrap, run  # noqa: E402
 from iteris.commands.session_tool import app as session_app  # noqa: E402
 from iteris.commands.setup import setup  # noqa: E402
@@ -115,6 +116,7 @@ app.command()(review)
 app.command()(dashboard)
 app.command()(monitor)
 app.command()(doctor)
+app.add_typer(report_app, name="report")
 app.add_typer(evolve_app, name="evolve")
 app.command("help")(help_command)
 app.command("version")(version_cmd)

@@ -196,6 +196,30 @@ def test_handoff_task_critical_snapshot_precedes_guide():
     assert "frontier-main" in text
 
 
+def test_handoff_includes_report_lookup_when_present():
+    lookups = {
+        "report_status": {
+            "reports_dir": "reports",
+            "report_count": 1,
+            "recent_reports": [{"report_id": "demo", "main_tex": "reports/demo/versions/v001/main.tex"}],
+            "templates": ["amsart"],
+            "styles": ["theory"],
+        }
+    }
+    text = build_monitor_handoff(
+        project_root=None,
+        user_message="write a LaTeX report",
+        lookups=lookups,
+        role="single",
+        executor="codex",
+        locale="en",
+    )
+
+    assert "lookups.report_status" in text
+    assert '"report_count": 1' in text
+    assert "reports/demo/versions/v001/main.tex" in text
+
+
 def test_family_child_handoff_names_current_child_and_generalization():
     lookups = {
         "status": {

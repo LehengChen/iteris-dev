@@ -37,6 +37,13 @@ Optional: put reference PDFs in `references/` after `new`.
 - `iteris recover` — after a crash: reconcile dead sessions and orphaned tasks
 - `iteris stop` — stop the worker session
 - `iteris review` — bundle artifacts for human review
+- `iteris report status/new/draft/build` — create a versioned LaTeX report from verified project evidence
+
+Report workspaces live under `reports/`.  The MVP template adapter is
+`amsart`; Iteris stores adapter code and manifest metadata, not third-party
+`.cls/.sty/.bst` files.  Internal evidence stays in `evidence.json` with
+project-relative paths and fact ids.  Switch a draft to portable sharing mode
+with `iteris report config --evidence portable` before rebuilding.
 
 ## Evolve: generalize across a project family
 

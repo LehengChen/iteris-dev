@@ -56,7 +56,10 @@ def test_build_project_index_fields(tmp_path):
     init_project(root, source=_write_source(tmp_path))
     payload = build_project_index(root)
     assert payload["commands"]["monitor"] == "iteris monitor"
+    assert payload["commands"]["report_status"] == "iteris report status"
     assert payload["pointers"]["status"] == "STATUS.md"
+    assert payload["pointers"]["reports"] == "reports"
+    assert payload["pointers"]["report_index"] == "reports/REPORT_INDEX.jsonl"
 
 
 def test_evolve_root_role(tmp_path, monkeypatch):
