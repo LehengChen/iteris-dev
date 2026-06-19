@@ -10,6 +10,12 @@ function reportFileUrl(path?: string): string {
   return path ? `/api/report-file?path=${encodeURIComponent(path)}` : '';
 }
 
+function reportExportUrl(reportId?: string, version?: string, kind?: 'pdf' | 'source-zip'): string {
+  if (!reportId || !version || !kind) return '';
+  const params = new URLSearchParams({ id: reportId, version, kind });
+  return `/api/report-export?${params.toString()}`;
+}
+
 function factLabel(id: string): string {
   const parts = id.split(':');
   const last = parts[parts.length - 1];
@@ -218,6 +224,38 @@ function EvidenceSidebar({
   );
 }
 
+function ExportMenu({
+  reportId,
+  version,
+  pdfExists,
+  sourceExists,
+}: {
+  reportId?: string;
+  version?: string;
+  pdfExists?: boolean;
+  sourceExists?: boolean;
+}) {
+  const pdfUrl = reportExportUrl(reportId, version, 'pdf');
+  const sourceUrl = reportExportUrl(reportId, version, 'source-zip');
+  return (
+    <details className="report-export-menu">
+      <summary>Export</summary>
+      <div className="report-export-popover">
+        {pdfExists && pdfUrl ? (
+          <a href={pdfUrl}>Download PDF</a>
+        ) : (
+          <span className="report-export-disabled">Download PDF</span>
+        )}
+        {sourceExists && sourceUrl ? (
+          <a href={sourceUrl}>Download Source ZIP</a>
+        ) : (
+          <span className="report-export-disabled">Download Source ZIP</span>
+        )}
+      </div>
+    </details>
+  );
+}
+
 export function Reports() {
   const { data, isLoading, error } = useReportWorkspaces();
   const items = data?.items ?? [];
@@ -261,22 +299,30 @@ export function Reports() {
             <h2>{workspace?.report?.title ?? selected?.title ?? 'Reports'}</h2>
             <code>{current?.main_tex ?? selected?.main_tex ?? 'reports'}</code>
           </div>
-          {versions.length > 0 && (
-            <label className="report-version-control">
-              <span>Report version</span>
-              <select
-                className="report-version-select"
-                value={workspace?.selected_version ?? ''}
-                onChange={(event) => setSelectedVersion(event.target.value)}
-              >
-                {versions.map((version) => (
-                  <option key={version.version} value={version.version}>
-                    {version.version}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          <div className="report-pdf-actions">
+            {versions.length > 0 && (
+              <label className="report-version-control">
+                <span>Report version</span>
+                <select
+                  className="report-version-select"
+                  value={workspace?.selected_version ?? ''}
+                  onChange={(event) => setSelectedVersion(event.target.value)}
+                >
+                  {versions.map((version) => (
+                    <option key={version.version} value={version.version}>
+                      {version.version}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <ExportMenu
+              reportId={workspace?.report?.report_id ?? selected?.report_id}
+              version={workspace?.selected_version ?? current?.version ?? selected?.current_version}
+              pdfExists={current?.pdf_exists}
+              sourceExists={current?.main_tex_exists}
+            />
+          </div>
         </div>
         {pdfUrl ? (
           <iframe className="report-pdf-frame" title="Report PDF" src={pdfUrl} />

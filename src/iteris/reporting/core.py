@@ -53,6 +53,7 @@ def report_status(project_root: Path, *, include_latex: bool = False) -> dict[st
             "draft": "iteris report draft . --report-id <id> [--new-version]",
             "doctor": "iteris report doctor . --json",
             "build": "iteris report build . --report-id <id>",
+            "export": "iteris report export . --report-id <id> --kind source-zip",
             "portable": "iteris report config . --report-id <id> --evidence portable",
         },
         "switches": {

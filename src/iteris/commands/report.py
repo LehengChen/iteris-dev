@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import typer
 
 from iteris import log
 from iteris.commands.common import require_public_project
-from iteris.reporting import add_feedback, build_report, configure_report, create_report, draft_report, report_status
+from iteris.reporting import add_feedback, build_report, configure_report, create_report, draft_report, export_report, report_status
 from iteris.reporting.latex import check_latex_environment
 from iteris.reporting.templates import DEFAULT_STYLE_ID, DEFAULT_TEMPLATE_ID
 
@@ -126,6 +127,27 @@ def build(
         hint = payload.get("environment", {}).get("install_hint")
         if hint:
             log.info(str(hint))
+
+
+@app.command("export")
+def export(
+    project_path: str = typer.Argument(".", help="Iteris project path."),
+    report_id: str = typer.Option(..., "--report-id", help="Report id under reports/."),
+    version: str = typer.Option("", "--version", help="Report version, defaults to current."),
+    kind: str = typer.Option("source-zip", "--kind", help="Export kind: pdf or source-zip."),
+    output: Path | None = typer.Option(None, "--output", help="Destination file. Defaults under reports/<id>/exports/."),
+    json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON."),
+) -> None:
+    """Export a PDF or Overleaf-ready LaTeX source ZIP for a report version."""
+    root = require_public_project(project_path)
+    try:
+        payload = export_report(root, report_id=report_id, version=version, kind=kind, output=output)
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    log.success(f"Exported {payload['download_name']}")
 
 
 @app.command("doctor")

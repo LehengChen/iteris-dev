@@ -11,6 +11,7 @@ from iteris.reporting.core import (
     report_status,
 )
 from iteris.reporting.evidence import collect_evidence
+from iteris.reporting.export import export_report
 
 __all__ = [
     "add_feedback",
@@ -19,5 +20,6 @@ __all__ = [
     "configure_report",
     "create_report",
     "draft_report",
+    "export_report",
     "report_status",
 ]

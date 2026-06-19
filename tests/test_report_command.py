@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -252,6 +253,75 @@ def test_report_draft_new_version_keeps_generic_layout(tmp_path):
     assert (root / "reports" / "demo-report" / "versions" / "v002" / "template.assets.json").exists()
     assert (root / "reports" / "demo-report" / "versions" / "v002" / "references.json").exists()
     assert (root / "reports" / "demo-report" / "versions" / "v002" / "evidence.json").exists()
+
+
+def test_report_export_source_zip_is_overleaf_ready_and_omits_audit_json(tmp_path):
+    root = _report_fixture(tmp_path)
+    create = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "demo-report", "--json"])
+    assert create.exit_code == 0, create.output
+    output = tmp_path / "demo-source.zip"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "report",
+            "export",
+            str(root),
+            "--report-id",
+            "demo-report",
+            "--kind",
+            "source-zip",
+            "--output",
+            str(output),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["kind"] == "source-zip"
+    assert payload["download_name"] == "demo-report-v001-source.zip"
+    assert output.exists()
+    with zipfile.ZipFile(output) as archive:
+        names = set(archive.namelist())
+        assert {"main.tex", "references.bib", "iterisreport.sty", "README.md", "EXPORT_MANIFEST.json"} <= names
+        assert "evidence.json" not in names
+        assert "references.json" not in names
+        assert "template.lock.json" not in names
+        manifest = json.loads(archive.read("EXPORT_MANIFEST.json").decode("utf-8"))
+    assert manifest["entrypoint"] == "main.tex"
+    assert manifest["files"] == sorted(["iterisreport.sty", "main.tex", "references.bib"])
+
+
+def test_report_export_pdf_requires_built_pdf(tmp_path):
+    root = _report_fixture(tmp_path)
+    create = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "demo-report", "--json"])
+    assert create.exit_code == 0, create.output
+    pdf = root / "reports" / "demo-report" / "versions" / "v001" / "main.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n")
+    output = tmp_path / "demo.pdf"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "report",
+            "export",
+            str(root),
+            "--report-id",
+            "demo-report",
+            "--kind",
+            "pdf",
+            "--output",
+            str(output),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["kind"] == "pdf"
+    assert payload["download_name"] == "demo-report-v001-report.pdf"
+    assert output.read_bytes() == b"%PDF-1.4\n"
 
 
 def test_report_lookup_triggered_by_latex_keywords(tmp_path):

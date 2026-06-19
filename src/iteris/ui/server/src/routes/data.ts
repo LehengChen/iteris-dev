@@ -1,6 +1,8 @@
 /** Dashboard data routes: facts graph, activity feed, frontier map, task pool, evolve. */
 import type { FastifyInstance } from 'fastify';
+import { execFile } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import type { ProjectPaths } from '../types.js';
 import { createBridge, type IterisBridge } from '../iteris.js';
@@ -87,6 +89,31 @@ function contentTypeFor(file: string): string {
   return 'application/octet-stream';
 }
 
+function execFileJson(args: string[], cwd: string): Promise<Record<string, any>> {
+  return new Promise((resolve, reject) => {
+    execFile('iteris', args, { cwd, maxBuffer: 64 * 1024 * 1024, timeout: 30000 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error(stderr || err.message));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch {
+        reject(new Error('invalid JSON from report export'));
+      }
+    });
+  });
+}
+
+function safeDownloadName(value: unknown): string {
+  const text = typeof value === 'string' && value ? value : 'report-export';
+  return text.replace(/[^A-Za-z0-9._-]/g, '_');
+}
+
+function cleanupDir(dir: string): void {
+  fs.rm(dir, { recursive: true, force: true }, () => undefined);
+}
+
 export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
   const bridge = createBridge(paths.projectPath);
   const project = paths.projectPath;
@@ -166,5 +193,34 @@ export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
     if (!full || !fs.existsSync(full)) return reply.status(404).send({ error: 'Not found' });
     reply.header('Content-Type', contentTypeFor(full));
     return reply.send(fs.createReadStream(full));
+  });
+
+  fastify.get('/api/report-export', async (req, reply) => {
+    const query = req.query as Record<string, unknown>;
+    const id = query?.id;
+    const version = query?.version;
+    const kind = query?.kind;
+    if (typeof id !== 'string' || id.length === 0) {
+      return reply.status(400).send({ error: 'missing required query parameter: id' });
+    }
+    if (kind !== 'pdf' && kind !== 'source-zip') {
+      return reply.status(400).send({ error: 'kind must be pdf or source-zip' });
+    }
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iteris-report-export-'));
+    const output = path.join(tmpDir, kind === 'pdf' ? 'report.pdf' : 'source.zip');
+    const args = ['report', 'export', project, '--report-id', id, '--kind', kind, '--output', output, '--json'];
+    if (typeof version === 'string' && version.length > 0) args.push('--version', version);
+    try {
+      const payload = await execFileJson(args, project);
+      if (!fs.existsSync(output)) throw new Error('export file was not created');
+      const filename = safeDownloadName(payload.download_name);
+      reply.header('Content-Type', typeof payload.content_type === 'string' ? payload.content_type : contentTypeFor(output));
+      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      reply.raw.on('close', () => cleanupDir(tmpDir));
+      return reply.send(fs.createReadStream(output));
+    } catch (e: any) {
+      cleanupDir(tmpDir);
+      return reply.status(500).send({ error: e.message });
+    }
   });
 }
