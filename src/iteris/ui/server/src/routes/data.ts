@@ -200,6 +200,7 @@ export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
     const id = query?.id;
     const version = query?.version;
     const kind = query?.kind;
+    const references = query?.references;
     if (typeof id !== 'string' || id.length === 0) {
       return reply.status(400).send({ error: 'missing required query parameter: id' });
     }
@@ -210,6 +211,7 @@ export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
     const output = path.join(tmpDir, kind === 'pdf' ? 'report.pdf' : 'source.zip');
     const args = ['report', 'export', project, '--report-id', id, '--kind', kind, '--output', output, '--json'];
     if (typeof version === 'string' && version.length > 0) args.push('--version', version);
+    if (references === 'omit') args.push('--no-references');
     try {
       const payload = await execFileJson(args, project);
       if (!fs.existsSync(output)) throw new Error('export file was not created');

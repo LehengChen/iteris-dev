@@ -10,9 +10,15 @@ function reportFileUrl(path?: string): string {
   return path ? `/api/report-file?path=${encodeURIComponent(path)}` : '';
 }
 
-function reportExportUrl(reportId?: string, version?: string, kind?: 'pdf' | 'source-zip'): string {
+function reportExportUrl(
+  reportId?: string,
+  version?: string,
+  kind?: 'pdf' | 'source-zip',
+  references?: 'include' | 'omit',
+): string {
   if (!reportId || !version || !kind) return '';
   const params = new URLSearchParams({ id: reportId, version, kind });
+  if (references === 'omit') params.set('references', 'omit');
   return `/api/report-export?${params.toString()}`;
 }
 
@@ -236,7 +242,8 @@ function ExportMenu({
   sourceExists?: boolean;
 }) {
   const pdfUrl = reportExportUrl(reportId, version, 'pdf');
-  const sourceUrl = reportExportUrl(reportId, version, 'source-zip');
+  const sourceUrl = reportExportUrl(reportId, version, 'source-zip', 'include');
+  const portableSourceUrl = reportExportUrl(reportId, version, 'source-zip', 'omit');
   return (
     <details className="report-export-menu">
       <summary>Export</summary>
@@ -250,6 +257,11 @@ function ExportMenu({
           <a href={sourceUrl}>Download Source ZIP</a>
         ) : (
           <span className="report-export-disabled">Download Source ZIP</span>
+        )}
+        {sourceExists && portableSourceUrl ? (
+          <a href={portableSourceUrl}>Download Source ZIP (No References)</a>
+        ) : (
+          <span className="report-export-disabled">Download Source ZIP (No References)</span>
         )}
       </div>
     </details>

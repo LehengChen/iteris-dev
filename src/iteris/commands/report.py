@@ -135,13 +135,25 @@ def export(
     report_id: str = typer.Option(..., "--report-id", help="Report id under reports/."),
     version: str = typer.Option("", "--version", help="Report version, defaults to current."),
     kind: str = typer.Option("source-zip", "--kind", help="Export kind: pdf or source-zip."),
+    include_references: bool = typer.Option(
+        True,
+        "--references/--no-references",
+        help="Include bibliography and citation commands in source ZIP exports.",
+    ),
     output: Path | None = typer.Option(None, "--output", help="Destination file. Defaults under reports/<id>/exports/."),
     json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON."),
 ) -> None:
     """Export a PDF or Overleaf-ready LaTeX source ZIP for a report version."""
     root = require_public_project(project_path)
     try:
-        payload = export_report(root, report_id=report_id, version=version, kind=kind, output=output)
+        payload = export_report(
+            root,
+            report_id=report_id,
+            version=version,
+            kind=kind,
+            include_references=include_references,
+            output=output,
+        )
     except (FileNotFoundError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     if json_output:

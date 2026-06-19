@@ -293,6 +293,46 @@ def test_report_export_source_zip_is_overleaf_ready_and_omits_audit_json(tmp_pat
     assert manifest["files"] == sorted(["iterisreport.sty", "main.tex", "references.bib"])
 
 
+def test_report_export_source_zip_can_omit_references(tmp_path):
+    root = _report_fixture(tmp_path)
+    create = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "demo-report", "--json"])
+    assert create.exit_code == 0, create.output
+    output = tmp_path / "demo-source-no-refs.zip"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "report",
+            "export",
+            str(root),
+            "--report-id",
+            "demo-report",
+            "--kind",
+            "source-zip",
+            "--no-references",
+            "--output",
+            str(output),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["download_name"] == "demo-report-v001-source-no-refs.zip"
+    assert payload["references"] == "omitted"
+    with zipfile.ZipFile(output) as archive:
+        names = set(archive.namelist())
+        main_tex = archive.read("main.tex").decode("utf-8")
+        manifest = json.loads(archive.read("EXPORT_MANIFEST.json").decode("utf-8"))
+        readme = archive.read("README.md").decode("utf-8")
+    assert "references.bib" not in names
+    assert "\\cite{" not in main_tex
+    assert "\\bibliography{references}" not in main_tex
+    assert "Evidence Register" not in main_tex
+    assert manifest["references"] == "omitted"
+    assert "omits the report bibliography" in readme
+
+
 def test_report_export_pdf_requires_built_pdf(tmp_path):
     root = _report_fixture(tmp_path)
     create = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "demo-report", "--json"])
