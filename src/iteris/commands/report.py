@@ -138,7 +138,7 @@ def export(
     include_references: bool = typer.Option(
         True,
         "--references/--no-references",
-        help="Include bibliography and citation commands in source ZIP exports.",
+        help="Include Iteris-internal evidence bibliography and citation commands in source ZIP exports.",
     ),
     output: Path | None = typer.Option(None, "--output", help="Destination file. Defaults under reports/<id>/exports/."),
     json_output: bool = typer.Option(False, "--json", help="Print machine-readable JSON."),
@@ -159,7 +159,7 @@ def export(
     if json_output:
         typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
         return
-    log.success(f"Exported {payload['download_name']}")
+    log.success(f"Exported {payload['output']}")
 
 
 @app.command("doctor")

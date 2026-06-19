@@ -110,6 +110,16 @@ function safeDownloadName(value: unknown): string {
   return text.replace(/[^A-Za-z0-9._-]/g, '_');
 }
 
+function validSlug(value: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value);
+}
+
+function exportErrorStatus(message: string): number {
+  if (/not found|not been built|not been drafted/i.test(message)) return 404;
+  if (/invalid|unsupported|cannot be inside/i.test(message)) return 400;
+  return 500;
+}
+
 function cleanupDir(dir: string): void {
   fs.rm(dir, { recursive: true, force: true }, () => undefined);
 }
@@ -204,11 +214,23 @@ export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
     if (typeof id !== 'string' || id.length === 0) {
       return reply.status(400).send({ error: 'missing required query parameter: id' });
     }
+    if (!validSlug(id) || (typeof version === 'string' && version.length > 0 && !validSlug(version))) {
+      return reply.status(400).send({ error: 'invalid report id or version' });
+    }
     if (kind !== 'pdf' && kind !== 'source-zip') {
       return reply.status(400).send({ error: 'kind must be pdf or source-zip' });
     }
+    if (references !== undefined && references !== 'include' && references !== 'omit') {
+      return reply.status(400).send({ error: 'references must be include or omit' });
+    }
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iteris-report-export-'));
     const output = path.join(tmpDir, kind === 'pdf' ? 'report.pdf' : 'source.zip');
+    let cleanupRegistered = false;
+    const cleanup = () => cleanupDir(tmpDir);
+    reply.raw.once('close', () => {
+      cleanupRegistered = true;
+      cleanup();
+    });
     const args = ['report', 'export', project, '--report-id', id, '--kind', kind, '--output', output, '--json'];
     if (typeof version === 'string' && version.length > 0) args.push('--version', version);
     if (references === 'omit') args.push('--no-references');
@@ -218,11 +240,11 @@ export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
       const filename = safeDownloadName(payload.download_name);
       reply.header('Content-Type', typeof payload.content_type === 'string' ? payload.content_type : contentTypeFor(output));
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-      reply.raw.on('close', () => cleanupDir(tmpDir));
       return reply.send(fs.createReadStream(output));
     } catch (e: any) {
-      cleanupDir(tmpDir);
-      return reply.status(500).send({ error: e.message });
+      if (!cleanupRegistered) cleanup();
+      const message = String(e.message || e);
+      return reply.status(exportErrorStatus(message)).send({ error: message });
     }
   });
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { useFactDetail, useReportWorkspaceDetail, useReportWorkspaces } from '../hooks/useApi';
 import { timeAgo } from '../lib/format';
 import { Tag } from '../components/Tag';
@@ -20,6 +21,10 @@ function reportExportUrl(
   const params = new URLSearchParams({ id: reportId, version, kind });
   if (references === 'omit') params.set('references', 'omit');
   return `/api/report-export?${params.toString()}`;
+}
+
+function closeExportMenu(event: MouseEvent<HTMLAnchorElement>): void {
+  event.currentTarget.closest('details')?.removeAttribute('open');
 }
 
 function factLabel(id: string): string {
@@ -244,24 +249,27 @@ function ExportMenu({
   const pdfUrl = reportExportUrl(reportId, version, 'pdf');
   const sourceUrl = reportExportUrl(reportId, version, 'source-zip', 'include');
   const portableSourceUrl = reportExportUrl(reportId, version, 'source-zip', 'omit');
+  const nothingExportable = !pdfExists && !sourceExists;
   return (
     <details className="report-export-menu">
-      <summary>Export</summary>
+      <summary>{nothingExportable ? 'Export unavailable' : 'Export'}</summary>
       <div className="report-export-popover">
         {pdfExists && pdfUrl ? (
-          <a href={pdfUrl}>Download PDF</a>
+          <a href={pdfUrl} onClick={closeExportMenu}>Download PDF</a>
         ) : (
-          <span className="report-export-disabled">Download PDF</span>
+          <span className="report-export-disabled">PDF not built</span>
         )}
         {sourceExists && sourceUrl ? (
-          <a href={sourceUrl}>Download Source ZIP</a>
+          <a href={sourceUrl} onClick={closeExportMenu}>Download Source ZIP</a>
         ) : (
-          <span className="report-export-disabled">Download Source ZIP</span>
+          <span className="report-export-disabled">Source not drafted</span>
         )}
         {sourceExists && portableSourceUrl ? (
-          <a href={portableSourceUrl}>Download Source ZIP (No References)</a>
+          <a href={portableSourceUrl} onClick={closeExportMenu}>
+            Download Source ZIP (No Internal References)
+          </a>
         ) : (
-          <span className="report-export-disabled">Download Source ZIP (No References)</span>
+          <span className="report-export-disabled">Source not drafted (No Internal References)</span>
         )}
       </div>
     </details>

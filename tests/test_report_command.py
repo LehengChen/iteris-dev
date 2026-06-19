@@ -297,7 +297,7 @@ def test_report_export_source_zip_can_omit_references(tmp_path):
     root = _report_fixture(tmp_path)
     create = CliRunner().invoke(app, ["report", "new", str(root), "--report-id", "demo-report", "--json"])
     assert create.exit_code == 0, create.output
-    output = tmp_path / "demo-source-no-refs.zip"
+    output = tmp_path / "demo-source-no-internal-refs.zip"
 
     result = CliRunner().invoke(
         app,
@@ -318,7 +318,7 @@ def test_report_export_source_zip_can_omit_references(tmp_path):
 
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    assert payload["download_name"] == "demo-report-v001-source-no-refs.zip"
+    assert payload["download_name"] == "demo-report-v001-source-no-internal-refs.zip"
     assert payload["references"] == "omitted"
     with zipfile.ZipFile(output) as archive:
         names = set(archive.namelist())
@@ -330,7 +330,7 @@ def test_report_export_source_zip_can_omit_references(tmp_path):
     assert "\\bibliography{references}" not in main_tex
     assert "Evidence Register" not in main_tex
     assert manifest["references"] == "omitted"
-    assert "omits the report bibliography" in readme
+    assert "omits Iteris-internal evidence references" in readme
 
 
 def test_report_export_pdf_requires_built_pdf(tmp_path):
