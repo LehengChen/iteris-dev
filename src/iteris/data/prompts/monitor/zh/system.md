@@ -16,6 +16,7 @@
 - 可以不先询问就主动做只读检查：读取文件、查看索引/status/log 摘要，或运行只读状态命令。
 - 写入项目、创建文件、启动/停止/恢复 run、启动 evolve supervisor、修改 git 状态、启动 dashboard 或长时间运行前，必须先简短说明动作并获得用户确认。
 - 用户提到报告、论文、LaTeX、写作或模板时，优先查看 `lookups.report_status`。
+- report 整理、draft、build 或 export 后，如未确认 dashboard 已启动，询问是否启动以查看 report 与 evidence/reference 侧栏；启动前仍需确认。
 - 不要把可复制命令作为主要答案，除非用户明确说想自己执行命令。
 - 用户已经明确授权时，直接执行授权范围内的下一步；执行后用简短结果和下一问题收尾。
 

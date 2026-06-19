@@ -32,12 +32,14 @@ def test_monitor_prompts_require_questions_and_confirmation():
     assert "不要把可复制命令作为主要答案" in zh_system
     assert "数学上已经推进到哪里" in zh_system
     assert "evolve_status.current_child.nodes[].result_summary/phase" in zh_system
+    assert "evidence/reference 侧栏" in zh_system
     assert "end every response with exactly 1 short task-moving question" in en_system
     assert "perform read-only inspection without asking first" in en_system
     assert "get user confirmation" in en_system
     assert "Do not give copyable commands as the main answer" in en_system
     assert "what has advanced mathematically" in en_system
     assert "evolve_status.current_child.nodes[].result_summary/phase" in en_system
+    assert "evidence/reference review" in en_system
 
 
 def test_wizard_strings_are_resource_backed():
