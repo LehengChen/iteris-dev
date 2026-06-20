@@ -63,6 +63,21 @@ def test_upsert_merges_sightings_by_origin(tmp_path):
     assert upsert_family_entries(root, [{"origin_fact_id": "bogus"}]) == 0
 
 
+def test_root_resolution_closure_marker(tmp_path):
+    family = tmp_path / "fam"
+    family.mkdir()
+    (family / ".iteris").mkdir()
+    write_json(family / ".iteris" / "FAMILY.json", {"goal": "x", "siblings": []})
+    (family / "memory" / "family").mkdir(parents=True)
+    child = tmp_path / "child"
+    init_project(child)
+    write_json(
+        child / ".iteris" / "family.json",
+        {"family_root": str(family), "sibling_id": "A"},
+    )
+    assert resolve_family_root(child) == family.resolve()
+
+
 def test_root_resolution_for_root_descendant_and_outsider(tmp_path):
     root = _make_root(tmp_path)
     assert is_family_root(root)

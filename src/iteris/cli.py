@@ -79,6 +79,7 @@ from iteris.commands.context import context  # noqa: E402
 from iteris.commands.dashboard import dashboard  # noqa: E402
 from iteris.commands.doctor import doctor  # noqa: E402
 from iteris.commands.evolve import app as evolve_app  # noqa: E402
+from iteris.commands.family import app as family_app  # noqa: E402
 from iteris.commands.frontier import app as frontier_app  # noqa: E402
 from iteris.commands.generalize import generalize  # noqa: E402
 from iteris.commands.generalize_tool import app as generalize_tool_app  # noqa: E402
@@ -116,6 +117,7 @@ app.command()(dashboard)
 app.command()(monitor)
 app.command()(doctor)
 app.add_typer(evolve_app, name="evolve")
+app.add_typer(family_app, name="family")
 app.command("help")(help_command)
 app.command("version")(version_cmd)
 

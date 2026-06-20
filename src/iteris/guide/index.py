@@ -10,6 +10,7 @@ from typing import Any
 from iteris.commands.goal.targets import resolve_goal_defaults
 from iteris.commands.workflow import default_session_name, evolve_session_name
 from iteris.evolve import evolve_path, has_evolve_state, read_state
+from iteris.family import family_path, has_family_state, read_family_marker, read_state as read_family_state
 from iteris.generalize import read_evolve_root
 from iteris.guide.paths import (
     package_data_path,
@@ -25,10 +26,14 @@ ROLE_NONE = "none"
 ROLE_SINGLE = "single"
 ROLE_FAMILY_ROOT = "family_root"
 ROLE_FAMILY_CHILD = "family_child"
+ROLE_FAMILY_CLOSURE_ROOT = "family_closure_root"
+ROLE_FAMILY_CLOSURE_SIBLING = "family_closure_sibling"
 
 
 def detect_project_role(root: Path) -> str:
     root = root.resolve()
+    if has_family_state(root):
+        return ROLE_FAMILY_CLOSURE_ROOT
     if not is_project(root):
         return ROLE_NONE
     if has_evolve_state(root):
@@ -36,6 +41,9 @@ def detect_project_role(root: Path) -> str:
     evolve_root = read_evolve_root(root)
     if evolve_root:
         return ROLE_FAMILY_CHILD
+    marker = read_family_marker(root)
+    if marker and marker.get("family_root"):
+        return ROLE_FAMILY_CLOSURE_SIBLING
     return ROLE_SINGLE
 
 
@@ -70,6 +78,12 @@ def build_project_index(root: Path) -> dict[str, Any]:
             "goal": None,
             "supervisor_session": evolve_session_name(root),
         },
+        "family_closure": {
+            "initialized": False,
+            "state_file": ".iteris/FAMILY.json",
+            "goal": None,
+            "supervisor_session": f"iteris-family-{session_slug(root.name)}",
+        },
         "pointers": {
             "status": "STATUS.md",
             "operator": "docs/OPERATOR.md",
@@ -83,18 +97,28 @@ def build_project_index(root: Path) -> dict[str, Any]:
             "start_evolve": "iteris evolve run",
             "check_status": "iteris status --json",
             "check_family": "iteris evolve status --json",
+            "check_family_closure": "iteris family status --json",
             "observe_ui": "iteris dashboard",
             "recover": "iteris recover",
             "monitor": "iteris monitor",
         },
     }
 
-    if role == ROLE_FAMILY_ROOT:
+    if role == ROLE_FAMILY_CLOSURE_ROOT:
+        payload["family_closure"]["initialized"] = True
+        if family_path(root).exists():
+            fstate = read_family_state(root)
+            payload["family_closure"]["goal"] = fstate.get("goal")
+    elif role == ROLE_FAMILY_ROOT:
         payload["evolve"]["initialized"] = True
         if evolve_path(root).exists():
             state = read_json(evolve_path(root), default={})
             if isinstance(state, dict):
                 payload["evolve"]["goal"] = state.get("goal")
+    elif role == ROLE_FAMILY_CLOSURE_SIBLING:
+        marker = read_family_marker(root) or {}
+        payload["family_root"] = marker.get("family_root")
+        payload["node_id"] = marker.get("sibling_id") or project_id
     elif role == ROLE_FAMILY_CHILD:
         entry = read_evolve_root(root) or {}
         payload["family_root"] = entry.get("path")

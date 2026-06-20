@@ -46,22 +46,34 @@ def inputs_path(root: Path) -> Path:
 
 
 def is_family_root(project_root: Path) -> bool:
-    return family_dir(project_root).is_dir()
+    root = project_root.resolve()
+    if (root / ".iteris" / "FAMILY.json").exists():
+        return True
+    return family_dir(root).is_dir()
 
 
 def resolve_family_root(project_root: Path) -> Path | None:
     """The family root whose ledgers this project should read, or None.
 
-    A project is in family scope when its lineage carries ``evolve_root``
-    (descendant) or when it is itself a root with a ``memory/family/`` dir.
-    Reads ``generalize.json`` directly to stay import-light for search.
+    Closure-family siblings carry ``.iteris/family.json`` (written by
+    ``iteris family new``). Evolve descendants use ``evolve_root`` in
+    ``generalize.json``. A directory with ``.iteris/FAMILY.json`` is itself
+    a closure-family root.
     """
+    project_root = project_root.resolve()
+    marker = read_json(project_root / ".iteris" / "family.json", default=None)
+    if isinstance(marker, dict) and marker.get("family_root"):
+        candidate = Path(str(marker["family_root"]))
+        if candidate.is_dir():
+            return candidate.resolve()
+    if (project_root / ".iteris" / "FAMILY.json").exists():
+        return project_root
     lineage = read_json(project_root / ".iteris" / "generalize.json", default={})
     entry = lineage.get("evolve_root") if isinstance(lineage, dict) else None
     if isinstance(entry, dict) and entry.get("path"):
         candidate = Path(str(entry["path"]))
         if is_family_root(candidate):
-            return candidate
+            return candidate.resolve()
     if is_family_root(project_root):
         return project_root
     return None
@@ -176,6 +188,9 @@ def family_search_rows(project_root: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for row in load_family_index(root):
         out = dict(row)
+        if str(row.get("schema_version") or "") == "iteris.family_fact.v0":
+            out["origin_fact_id"] = row.get("fact_id")
+            out.setdefault("claim_summary", row.get("claim_summary") or "")
         out["scope"] = "family"
         out["hint"] = RE_VERIFY_HINT
         rows.append(out)

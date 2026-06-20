@@ -1,0 +1,46 @@
+{
+  "schema_version": "iteris.family_manifest.v1",
+  "goal": "North-Star full closure of Problems 2.6, 2.7, 2.8 on linear system complexity.",
+  "schedule": { "max_concurrent": 3 },
+  "policy": {
+    "prefer_watchdog_goal": true,
+    "allow_principled_stop": false
+  },
+  "shared_references": [],
+  "source_problems_doc": "See sibling sources for quantifier statements.",
+  "siblings": [
+    {
+      "sibling_id": "2.6",
+      "path": "prob-2-6-kappa-p-codex",
+      "title": "Problem 2.6 kappa-bar-p",
+      "source": "sources/problem-2-6.md",
+      "north_star": "Close FC-6D branch table and FC-6B endpoint p=1/2 with verified facts only.",
+      "target_artifact": "results/prob-2-6/answer_northstar_verified.md",
+      "claim_prefix": "North-Star full closure of Problem 2.6:",
+      "gaps": ["FC-6B", "FC-6D"],
+      "session": "iteris-prob-26"
+    },
+    {
+      "sibling_id": "2.7",
+      "path": "prob-2-7-small-outliers-codex",
+      "title": "Problem 2.7 small outliers",
+      "source": "sources/problem-2-7.md",
+      "north_star": "Full closure for (n,0,l,kappa) matvec vs direct models.",
+      "target_artifact": "results/prob-2-7/answer_northstar_verified.md",
+      "claim_prefix": "North-Star full closure of Problem 2.7:",
+      "gaps": ["FC-7A"],
+      "session": "iteris-prob-27"
+    },
+    {
+      "sibling_id": "2.8",
+      "path": "prob-2-8-random-solve-codex",
+      "title": "Problem 2.8 random solve",
+      "source": "sources/problem-2-8.md",
+      "north_star": "R2-A or R2-B or honest R2-C partial with named open primitives.",
+      "target_artifact": "results/prob-2-8/answer_northstar_verified.md",
+      "claim_prefix": "North-Star resolution of Problem 2.8:",
+      "gaps": ["R2-A", "R2-B", "R2-C"],
+      "session": "iteris-prob-28"
+    }
+  ]
+}

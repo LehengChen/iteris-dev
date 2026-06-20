@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from iteris.family import read_family_marker
 from iteris.project import read_json
 from pathlib import Path
 from typing import Sequence
@@ -76,13 +77,31 @@ def build_generalization_block(generalization: dict) -> str:
     )
 
 
+def build_family_closure_context_lines(root: Path) -> list[str]:
+    marker = read_family_marker(root)
+    if not marker:
+        return []
+    family_root_s = marker.get("family_root")
+    sibling_id = marker.get("sibling_id")
+    if not family_root_s or not sibling_id:
+        return []
+    from iteris.family_pool import build_pool_context_block
+
+    block = build_pool_context_block(
+        root,
+        family_root=Path(str(family_root_s)),
+        sibling_id=str(sibling_id),
+    )
+    return [block]
+
+
 def build_project_context_lines(root: Path) -> list[str]:
     """Goal-contract lines derived from project state set up at `iteris new` time.
 
-    Covers user-provided reference packs (references/MANIFEST.json) and advisory
-    boundary knowledge inherited from a prior project (.iteris/inherit.json).
+    Covers family closure pool, user-provided reference packs, and inherited boundary.
     """
     lines: list[str] = []
+    lines.extend(build_family_closure_context_lines(root))
     if (root / "references" / "MANIFEST.json").exists():
         lines.append(
             "- User-provided reference material is indexed in `references/MANIFEST.json`. Read the manifest early and consult the listed files before re-deriving known results or fetching external references.\n"

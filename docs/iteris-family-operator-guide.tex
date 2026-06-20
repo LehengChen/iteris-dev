@@ -1,0 +1,375 @@
+% iteris family — operator guide for collaborators
+% Compile: xelatex iteris-family-operator-guide.tex (run twice for TOC)
+\documentclass[11pt,a4paper]{ctexart}
+
+\usepackage{geometry}
+\geometry{margin=2.2cm}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!70!black,
+  pdftitle={Iteris Family 联合调度操作指南},
+}
+
+\lstdefinestyle{shell}{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{black!20},
+  backgroundcolor=\color{black!3},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+}
+
+\lstdefinestyle{json}{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{black!15},
+  backgroundcolor=\color{black!2},
+}
+
+\title{\textbf{Iteris \texttt{family} 联合调度}\\[0.4em]
+  \large 合作者操作指南（CLI + 目录约定）}
+\author{Iteris 开发组 \quad {\small 2026-06-20}}
+\date{}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{这份文档解决什么问题}
+
+当你需要\textbf{并行推进一族相关的 North-Star 闭合题}（例如 GECP Section~5 的 5.1/5.2/5.3，或 Problem~2.6/2.7/2.8）时，单独对每个 sibling 手工执行
+\begin{lstlisting}[style=shell]
+iteris run ...
+\end{lstlisting}
+很快会失控：session 名不一致、不知道哪题在跑、忘了补开停掉的 loop。
+
+\textbf{\texttt{iteris family}} 是 Iteris core 中的一组命令，用于：
+\begin{itemize}[nosep]
+  \item 在 \textbf{family 根目录} 维护一份 \texttt{.iteris/FAMILY.json}（sibling 列表、并行上限、family 总目标）；
+  \item 用 \texttt{family status} 一眼看到各 sibling 的 \textbf{phase / tmux session / TASK\_POOL frontier}；
+  \item 用 \texttt{family schedule} / \texttt{family start} 按 \texttt{max\_concurrent} \textbf{自动补开} sibling 的 \texttt{/goal} loop；
+  \item 可选：\texttt{family run} 启动后台 supervisor，周期性执行 schedule。
+\end{itemize}
+
+\begin{remark}[与 \texttt{iteris evolve} 的区别]
+\texttt{evolve} 管的是「一个 verified 结果 $\to$ 多个泛化方向（direction pool）」。
+\texttt{family} 管的是「多个\textbf{并行 sibling} 各自闭合原题，必要时互相 cite verified 事实」。
+二者不要混用同一套 mental model。
+\end{remark}
+
+\section{前置条件}
+
+\begin{enumerate}[nosep]
+  \item 已安装 Iteris CLI（\texttt{iteris --version} 可用）。代码更新后在本机执行：
+    \begin{lstlisting}[style=shell]
+cd /path/to/Iteris && bash scripts/deploy.sh
+    \end{lstlisting}
+  \item 已安装 \textbf{tmux}（family 通过 tmux session 管理 sibling run）。
+  \item 每个 \textbf{sibling} 必须是标准 Iteris 项目（含 \texttt{iteris.toml}），通常已有：
+    \begin{itemize}[nosep]
+      \item \texttt{.iteris/watchdog\_goal.txt}（North-Star 约束文案）；
+      \item \texttt{tasks/TASK\_POOL.json}（含 \texttt{task-align-*} 对齐任务）；
+      \item \texttt{docs/ANTI\_DRIFT\_ALIGNMENT.md}（gap 表与 freeze 规则，由 operator 维护）。
+    \end{itemize}
+  \item \textbf{Family 根目录}本身\textbf{不必}是 Iteris 项目；它只是一个 wrapper 目录，下面放 sibling（子目录或 symlink）。
+\end{enumerate}
+
+\section{推荐目录结构}
+
+\begin{lstlisting}[style=shell]
+my-family/                      # family 根（wrapper）
+  .iteris/FAMILY.json           # family 状态（init 生成）
+  .iteris/watchdog_goal.txt     # 可选：family 级总控 goal
+  docs/FAMILY_OPERATOR.md       # 人读：gap、round、session 约定
+  docs/ANTI_DRIFT_ALIGNMENT.md
+  gecp-5-1-quasi-optimality -> ../Iteris-GECP-evo-...   # sibling（symlink 或子目录）
+  gecp-5-2-windowed-matching -> ...
+  gecp-5-3-fixed-sigma -> ...
+\end{lstlisting}
+
+每个 sibling 项目内会被写入 \texttt{.iteris/family.json}（指向 family 根与 \texttt{sibling\_id}），便于 monitor / 后续工具识别归属。
+
+\section{创建 family：\texttt{iteris family new}（推荐）}
+
+从零创建一族 workspace：共享目录 + 每题一个完整 Iteris 项目 + 共享资源池路径。
+
+\subsection{方式 A：manifest 文件（推荐）}
+
+模板见 \texttt{src/iteris/data/templates/family\_manifest.example.json}。
+
+\begin{lstlisting}[style=shell]
+iteris family new my-family --manifest family.json
+\end{lstlisting}
+
+manifest 中每个 sibling 需填写：
+\begin{itemize}[nosep]
+  \item \texttt{sibling\_id}、\texttt{path}（子目录名）
+  \item \texttt{source}（原题 markdown，会复制进 sibling 的 \texttt{sources/}）
+  \item \texttt{north\_star}（写入 \texttt{.iteris/watchdog\_goal.txt}）
+  \item \texttt{target\_artifact}、\texttt{gaps}、\texttt{session}、\texttt{claim\_prefix}
+\end{itemize}
+
+\subsection{方式 B：命令行逐个 sibling}
+
+\begin{lstlisting}[style=shell]
+iteris family new my-family --goal "..." \
+  --sibling "id=2.6,path=prob-26,source=sources/p26.md,\
+north_star=Close problem 2.6...,target=results/p26/answer.md,gaps=FC-6"
+\end{lstlisting}
+
+\subsection{共享资源池}
+
+\begin{lstlisting}[style=shell]
+# sibling 内 promote 后，从 family 根 export：
+iteris family export . --from prob-2-8-random-solve-codex \
+  --fact-id fact:... --usable-by 2.6 --usable-by 2.7
+
+iteris family pool              # 查看池
+iteris tool memory search . --query "..."   # 自动含 scope:family
+\end{lstlisting}
+
+每个 sibling 的 \texttt{iteris run} prompt 会自动注入 family closure 块（可引用池内 verified 线索，须本地 re-verify）。
+
+\label{sec:init}
+
+在 \textbf{family 根目录}执行。
+
+\subsection{方式 A：显式声明 sibling（推荐，session 名可控）}
+
+以 GECP Section~5 为例：
+\begin{lstlisting}[style=shell]
+cd gecp-section5-family
+
+iteris family init \
+  --goal "North-Star full closure of GECP Section 5 (5.1/5.2/5.3)." \
+  --sibling "id=5.1,path=gecp-5-1-quasi-optimality,\
+session=iteris-gecp-s5-51,\
+target=results/gecp-5-1-quasi-optimality/answer_northstar_verified.md,\
+gaps=OC-5B" \
+  --sibling "id=5.2,path=gecp-5-2-windowed-matching,\
+session=iteris-gecp-s5-52,\
+target=results/gecp-5-2-windowed-matching/answer_northstar_verified.md,\
+gaps=OC-5C" \
+  --sibling "id=5.3,path=gecp-5-3-fixed-sigma,\
+session=iteris-gecp-s5-53,\
+target=results/gecp-5-3-fixed-sigma/answer_northstar_verified.md,\
+gaps=OC-5D" \
+  --max-concurrent 3
+\end{lstlisting}
+
+以 Problem~2.6--2.8 为例：
+\begin{lstlisting}[style=shell]
+cd prob-2-6-7-8-family
+
+iteris family init \
+  --goal "North-Star full closure of Problems 2.6, 2.7, 2.8." \
+  --sibling "id=2.6,path=prob-2-6-kappa-p-codex,session=iteris-prob-26,\
+target=results/prob-2-6/answer_northstar_verified.md,gaps=FC-6" \
+  --sibling "id=2.7,path=prob-2-7-small-outliers-codex,session=iteris-prob-27,\
+target=results/prob-2-7/answer_northstar_verified.md,gaps=FC-7" \
+  --sibling "id=2.8,path=prob-2-8-random-solve-codex,session=iteris-prob-28,\
+target=results/prob-2-8/answer_northstar_verified.md,gaps=R2" \
+  --max-concurrent 3
+\end{lstlisting}
+
+\subsection{方式 B：自动收养子目录 / symlink}
+
+若 sibling 已是 family 根下的 Iteris 子目录或 symlink，可省略 \texttt{--sibling}：
+\begin{lstlisting}[style=shell]
+iteris family init --goal "..." --max-concurrent 2
+\end{lstlisting}
+\texttt{--adopt-symlinks} 为默认开启（也会收养普通子目录中的 Iteris 项目）。
+
+\subsection{\texttt{--sibling} 字段说明}
+
+\begin{center}
+\begin{tabular}{llp{7.5cm}}
+\toprule
+键 & 必填 & 含义 \\
+\midrule
+\texttt{id} & 是 & sibling 短名（如 \texttt{5.2}、\texttt{2.8}） \\
+\texttt{path} & 是 & 相对 family 根的路径（或 symlink 名） \\
+\texttt{session} & 否 & tmux session 名；省略则用 \texttt{iteris-<slug>} \\
+\texttt{target} & 否 & 传给 \texttt{iteris run --target-artifact} \\
+\texttt{gaps} & 否 & gap 标签，用 \texttt{|} 分隔，仅作 status 展示 \\
+\texttt{priority} & 否 & 调度优先级（整数，越大越先补开） \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{生成的 \texttt{FAMILY.json}（摘要）}
+
+\begin{lstlisting}[style=json]
+{
+  "schema_version": "iteris.family_state.v0",
+  "goal": "...",
+  "schedule": { "max_concurrent": 3, "stall_hours": 18.0 },
+  "policy": {
+    "prefer_watchdog_goal": true,
+    "allow_principled_stop": false,
+    "claim_prefix": null
+  },
+  "siblings": [
+    {
+      "sibling_id": "5.2",
+      "path": "gecp-5-2-windowed-matching",
+      "session": "iteris-gecp-s5-52",
+      "target_artifact": "results/.../answer_northstar_verified.md",
+      "gaps": ["OC-5C"]
+    }
+  ]
+}
+\end{lstlisting}
+
+\section{日常命令}
+
+所有命令均在 \textbf{family 根目录}执行（或显式传入路径）。
+加 \texttt{--json} 可得到机器可读输出，便于脚本集成。
+
+\subsection{\texttt{iteris family status} — 看全族状态}
+
+\begin{lstlisting}[style=shell]
+iteris family status
+iteris family status --json
+\end{lstlisting}
+
+输出包含：
+\begin{itemize}[nosep]
+  \item \textbf{summary}：几个 sibling \texttt{closed}、几个 \texttt{running}、还剩几个并发 slot；
+  \item 每个 sibling 的 \textbf{phase}、\textbf{session\_live}、\textbf{active\_frontier}、ready 的 \texttt{task-align-*} 任务。
+\end{itemize}
+
+\paragraph{phase 含义（机械判定，供调度用）}
+\begin{center}
+\begin{tabular}{lp{9cm}}
+\toprule
+phase & 含义 \\
+\midrule
+\texttt{open} & 尚无通过的 \texttt{goal\_success}（或 policy 不允许的 terminal） \\
+\texttt{closed} & verification ledger 中有通过的 \texttt{goal\_success} \\
+\texttt{blocked\_partial} & 有 \texttt{principled\_stop}，但 policy 默认\textbf{不}视为 family terminal \\
+\texttt{reduced} & 仅当 \texttt{--allow-principled-stop} 时，\texttt{principled\_stop} 计为 terminal \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{remark}
+\texttt{closed} 目前表示「ledger 里有过 \texttt{goal\_success}」，\textbf{不一定}等于 operator 定义的 Round~2 \emph{full closure}（claim 前缀、gap 全关等）。详细数学进度仍以各 sibling 的 \texttt{STATUS.md} 与 \texttt{answer\_northstar\_verified.md} 为准。
+\end{remark}
+
+\subsection{\texttt{iteris family schedule} — 执行一次调度 tick}
+
+\begin{lstlisting}[style=shell]
+iteris family schedule --dry-run    # 只看会启动谁，不真开
+iteris family schedule              # 对 open 且 session 未 live 的 sibling 启动 run
+\end{lstlisting}
+
+规则（简化）：
+\begin{enumerate}[nosep]
+  \item 统计 \texttt{phase=open} 且 session 已在跑的 sibling 数 $R$；
+  \item 可用 slot $= \texttt{max\_concurrent} - R$；
+  \item 在 \texttt{open} 且 \textbf{未 live} 的 sibling 中，按 priority / phase 排序，最多启动 slot 个；
+  \item 启动命令等价于在 sibling 目录执行 \texttt{iteris run}，goal 优先读 \texttt{.iteris/watchdog\_goal.txt}。
+\end{enumerate}
+
+\subsection{\texttt{iteris family start} — 手动启动}
+
+\begin{lstlisting}[style=shell]
+iteris family start                      # 同 schedule 逻辑
+iteris family start --sibling 2.8        # 强制启动指定 sibling（忽略 max_concurrent）
+iteris family start --dry-run --json
+\end{lstlisting}
+
+\subsection{\texttt{iteris family run} — 后台 supervisor}
+
+\begin{lstlisting}[style=shell]
+iteris family run                        #  detached tmux: iteris-family-<family-slug>
+iteris family run --foreground --ticks 1 # 前台跑 1 个 tick（调试）
+iteris family run --tick-seconds 900     # 默认每 15 分钟 schedule 一次
+\end{lstlisting}
+
+Supervisor \textbf{只负责补开 sibling session}，不修改 TASK\_POOL，也不注入 alignment 任务。
+
+\subsection{\texttt{iteris family stop} — 停止 session}
+
+\begin{lstlisting}[style=shell]
+iteris family stop --sibling 2.8         # 只停 2.8 的 tmux session
+iteris family stop                       # 停所有 sibling session（不含 supervisor）
+iteris family stop --supervisor          # 停 family supervisor
+\end{lstlisting}
+
+\section{推荐工作流（合作者 checklist）}
+
+\begin{enumerate}
+  \item \textbf{Pull 最新 Iteris} 并 \texttt{deploy.sh}（若 CLI 行为与文档不符，先查 deploy skew：\texttt{iteris run} 会提示）。
+  \item 进入 family 根；若尚无 \texttt{FAMILY.json}，按 §\ref{sec:init} 执行 \texttt{family init}（已有则跳过）。
+  \item \texttt{iteris family status}：确认各 sibling phase、session、ready align 任务。
+  \item Operator 若做了 Round push（仍可能通过 \texttt{scripts/apply\_alignment\_*.py}），先跑脚本再 \texttt{status}。
+  \item \texttt{iteris family schedule --dry-run} $\to$ 确认将要启动的 sibling $\to$ \texttt{family schedule} 或 \texttt{family start --sibling ...}。
+  \item 需要长期无人值守时：\texttt{iteris family run}；结束用 \texttt{family stop --supervisor}。
+  \item attach 某个 sibling 的 agent loop：
+    \begin{lstlisting}[style=shell]
+iteris attach gecp-5-2-windowed-matching --session iteris-gecp-s5-52
+    \end{lstlisting}
+  \item 数学进度与 gap 闭合：读 sibling 的 \texttt{STATUS.md}、\texttt{docs/ANTI\_DRIFT\_ALIGNMENT.md}；\textbf{不要}只信 family 的 \texttt{closed} 计数。
+\end{enumerate}
+
+\section{当前能力边界（2026-06-20）}
+
+\begin{itemize}
+  \item \textbf{已支持}：sibling 注册、status 聚合、watchdog goal 自动传入 \texttt{iteris run}、并发调度、supervisor loop。
+  \item \textbf{尚未迁入 family CLI}：Round push 任务注入 / drift freeze（仍在 family 仓的 \texttt{apply\_alignment\_*.py}）；跨 sibling 依赖自动编排；claim 前缀硬门禁。
+  \item \textbf{与 evolve 共存}：sibling 可以是 evolve 仓库；\texttt{iteris evolve stop} 与 \texttt{iteris family stop} 互不 cascade（与单题 \texttt{iteris stop} 语义一致）。
+\end{itemize}
+
+\section{常见问题}
+
+\paragraph{Q：\texttt{family status} 显示 \texttt{closed} 但 watchdog 还要求 full closure？}
+A：status 的 \texttt{closed} 是 ledger 机械判定。Round~1 partial 也可能产生 \texttt{goal\_success}。以 artifact 标题前缀（如 \texttt{North-Star full closure of ...}）和 gap 表为准。
+
+\paragraph{Q：\texttt{schedule} 说 nothing to start，但某题明明没跑？}
+A：可能该 sibling 的 \texttt{phase} 已是 \texttt{closed}，或 session 仍 live（含 closed 后未停的 loop）。用 \texttt{status --json} 看 \texttt{session\_live}。
+
+\paragraph{Q：init 报 cannot resolve sibling？}
+A：检查 \texttt{path} 是否指向含 \texttt{iteris.toml} 的目录；symlink 失效时可加 \texttt{evolve\_dir} 到 \texttt{FAMILY.json} 手工编辑（见 \texttt{family.py} 的 fallback）。
+
+\paragraph{Q：需要改 \texttt{max\_concurrent}？}
+A：直接编辑 \texttt{.iteris/FAMILY.json} 的 \texttt{schedule.max\_concurrent}（暂无单独 CLI 子命令）。
+
+\section{命令速查表}
+
+\begin{center}
+\begin{longtable}{p{4.2cm}p{9.8cm}}
+\toprule
+命令 & 作用 \\
+\midrule
+\endhead
+\texttt{iteris family new} & 创建 family + N 个 sibling 项目 + 共享池目录 \\
+\texttt{iteris family export} & 将 sibling verified fact 写入共享池 \\
+\texttt{iteris family pool} & 列出共享池条目 \\
+\texttt{iteris family init} & 注册已有 sibling layout（adopt symlink） \\
+\texttt{iteris family status} & 全族 phase / session / pool 概览 \\
+\texttt{iteris family schedule} & 按并发上限补开 sibling run \\
+\texttt{iteris family start} & 手动启动（可 \texttt{--sibling ID}） \\
+\texttt{iteris family run} & 后台 supervisor 周期 schedule \\
+\texttt{iteris family stop} & 停止 sibling 或 supervisor session \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\vfill
+\noindent\textit{文档版本与 Iteris 源码同步维护于 \texttt{Iteris/docs/iteris-family-operator-guide.tex}。问题反馈请指向 Iteris 仓库 issue 或 family operator。}
+
+\end{document}
