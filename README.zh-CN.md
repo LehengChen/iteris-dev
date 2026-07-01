@@ -101,21 +101,6 @@ iteris dashboard
 
 首次使用时 dashboard 会安装 UI 依赖，必要时构建 React client，启动本地 loopback Fastify server，并在浏览器中打开日志视图。使用 **Reports** 标签页可查看已创建 `iteris report` 工作区的项目。可以用 `--port` 指定端口，用 `--no-open` 禁止自动打开浏览器。
 
-## Family Closure（并列 sibling 闭合）
-
-当你需要**并行推进一组相关的 North-Star 闭合题**（多个 sibling 项目）时，使用 `iteris family` 做联合调度与共享 verified 事实池。这与 `iteris evolve` 不同——evolve 是从一个 verified 结果出发探索泛化方向。
-
-```bash
-iteris family init . --goal "Literal closure of Problems 2.6–2.8." \
-  --sibling "id=2.6,path=prob-2-6,session=iteris-prob-26,target=results/prob-2-6/answer_verified.md"
-iteris family status .
-iteris family schedule --dry-run .
-iteris family run .    # 后台 supervisor，遵守 max_concurrent
-iteris family export . --from prob-2-6 --fact-id 'fact:...' --usable-by 2.7,2.8
-```
-
-Family wrapper 状态在 `.iteris/FAMILY.json`；每个 sibling 有 `.iteris/family.json` 指回 wrapper。共享池：`memory/family/FAMILY_INDEX.jsonl`。请在 **sibling 路径**上 run，不要直接在 wrapper 根目录 run——或由 `family schedule` 代劳。
-
 ## Evolve Family
 
 当一个项目已有 verified result 后，可以用 evolve 在预算内探索 generalization 方向：
@@ -131,6 +116,21 @@ iteris evolve stop
 ```
 
 在 family root 上运行 `iteris dashboard` 可以查看 evolve tree 和 direction pool。
+
+## Family Closure（并列 sibling 闭合）
+
+当你需要**并行推进一组相关的 North-Star 闭合题**（多个 sibling 项目）时，使用 `iteris family` 做联合调度与共享 verified 事实池。这与 `iteris evolve` 不同——evolve 是从一个 verified 结果出发探索泛化方向。
+
+```bash
+iteris family init . --goal "Literal closure of Problems 2.6–2.8." \
+  --sibling "id=2.6,path=prob-2-6,session=iteris-prob-26,target=results/prob-2-6/answer_verified.md"
+iteris family status .
+iteris family schedule --dry-run .
+iteris family run .    # 后台 supervisor，遵守 max_concurrent
+iteris family export . --from prob-2-6 --fact-id 'fact:...' --usable-by 2.7,2.8
+```
+
+Family wrapper 状态在 `.iteris/FAMILY.json`；每个 sibling 有 `.iteris/family.json` 指回 wrapper。共享池：`memory/family/FAMILY_INDEX.jsonl`。请在 **sibling 路径**上 run，不要直接在 wrapper 根目录 run——或由 `family schedule` 代劳。
 
 ## Research Reports（研究报告）
 
@@ -157,8 +157,8 @@ Report 工作区位于 `reports/`。证据保存在项目本地 `evidence.json` 
 | `iteris status` | 查看项目状态。 |
 | `iteris recover` | 恢复 dead session 或 orphaned work。 |
 | `iteris dashboard` | 启动本地 Web UI。 |
-| `iteris family ...` | 并列 sibling North-Star 联合调度与共享 verified 事实池。 |
 | `iteris evolve ...` | 管理 generalization family。 |
+| `iteris family ...` | 并列 sibling North-Star 联合调度与共享 verified 事实池。 |
 | `iteris report ...` | 从 verified 证据起草并构建 LaTeX 报告。 |
 | `iteris help all` | 完整命令指南。 |
 

@@ -117,6 +117,24 @@ browser. Use the **Reports** tab to inspect report workspaces on projects that
 use `iteris report`. Use `--port` to choose a preferred port and `--no-open` to avoid
 opening a browser.
 
+## Evolve Families
+
+After a project has a verified result, evolve can explore generalization
+directions under a budget:
+
+```bash
+iteris evolve init . --goal "push the result to the most general setting" \
+  --budget-hours 72 --max-concurrent 2
+iteris evolve run
+iteris evolve status
+iteris evolve veto <direction-id>
+iteris evolve report
+iteris evolve stop
+```
+
+Use `iteris dashboard` on the family root to inspect the evolve tree and
+direction pool.
+
 ## Family Closure
 
 When you need to close several **related North-Star problems in parallel**
@@ -137,24 +155,6 @@ Family wrapper state lives in `.iteris/FAMILY.json`; each sibling carries
 `.iteris/family.json` pointing back to the wrapper. Shared pool:
 `memory/family/FAMILY_INDEX.jsonl`. Run workers on **sibling paths**, not the
 wrapper root — or let `family schedule` start them.
-
-## Evolve Families
-
-After a project has a verified result, evolve can explore generalization
-directions under a budget:
-
-```bash
-iteris evolve init . --goal "push the result to the most general setting" \
-  --budget-hours 72 --max-concurrent 2
-iteris evolve run
-iteris evolve status
-iteris evolve veto <direction-id>
-iteris evolve report
-iteris evolve stop
-```
-
-Use `iteris dashboard` on the family root to inspect the evolve tree and
-direction pool.
 
 ## Research Reports
 
@@ -182,8 +182,8 @@ Report workspaces live under `reports/`. Evidence stays in project-local
 | `iteris status` | Summarize project state. |
 | `iteris recover` | Reconcile dead sessions or orphaned work. |
 | `iteris dashboard` | Launch the local web UI. |
-| `iteris family ...` | Joint sibling North-Star scheduling and shared verified-fact pool. |
 | `iteris evolve ...` | Manage generalization families. |
+| `iteris family ...` | Joint sibling North-Star scheduling and shared verified-fact pool. |
 | `iteris report ...` | Draft and build LaTeX reports from verified evidence. |
 | `iteris help all` | Full command guide. |
 
