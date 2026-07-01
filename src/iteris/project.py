@@ -27,6 +27,7 @@ PROJECT_DIRS = [
     "artifacts/proofs",
     "artifacts/run_bundles",
     "results",
+    "reports",
     "memory/facts",
     "memory/scratch",
     "memory/summaries",

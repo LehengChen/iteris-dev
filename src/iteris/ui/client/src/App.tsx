@@ -3,6 +3,7 @@ import { LogViewer } from './views/LogViewer';
 import { Overview } from './views/Overview';
 import { FactGraph } from './views/FactGraph';
 import { Evolve } from './views/Evolve';
+import { Reports } from './views/Reports';
 import { AnswerStatus } from './components/AnswerStatus';
 import { useEvolve } from './hooks/useApi';
 
@@ -25,6 +26,9 @@ export default function App() {
               Evolve
             </NavLink>
           )}
+          <NavLink to="/reports" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Reports
+          </NavLink>
           <NavLink to="/logs" className={({ isActive }) => (isActive ? 'active' : '')}>
             Logs
           </NavLink>
@@ -37,6 +41,7 @@ export default function App() {
           <Route path="/overview" element={<Overview />} />
           <Route path="/facts" element={<FactGraph />} />
           <Route path="/evolve" element={<Evolve />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/logs" element={<LogViewer />} />
           <Route path="*" element={<Navigate to="/overview" replace />} />
         </Routes>

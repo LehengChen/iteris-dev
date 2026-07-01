@@ -24,6 +24,9 @@ venv/
 .iteris/monitor/
 artifacts/
 
+# Report-local build outputs
+reports/*/build/
+
 # Documentation build artifacts
 *.aux
 *.log

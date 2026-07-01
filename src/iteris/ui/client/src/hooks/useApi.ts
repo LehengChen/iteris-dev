@@ -19,6 +19,8 @@ import type {
   JournalEntry,
   NodeDetail,
   ReportItem,
+  ReportWorkspaceDetail,
+  ReportWorkspaceList,
   Stream,
   TaskPool,
 } from '../types';
@@ -44,6 +46,7 @@ const ENDPOINTS = {
   evolve: { url: '/api/evolve', interval: 10000 },
   supervision: { url: '/api/supervision', interval: 5000 },
   reports: { url: '/api/reports', interval: 10000 },
+  reportWorkspaces: { url: '/api/report-workspaces', interval: 10000 },
   family: { url: '/api/family', interval: 10000 },
 } as const;
 
@@ -66,6 +69,7 @@ export const useTasks = () => usePolling<TaskPool>('tasks');
 export const useEvolve = () => usePolling<EvolveState>('evolve');
 export const useSupervision = () => usePolling<{ items: JournalEntry[] }>('supervision');
 export const useReports = () => usePolling<{ items: ReportItem[] }>('reports');
+export const useReportWorkspaces = () => usePolling<ReportWorkspaceList>('reportWorkspaces');
 export const useFamily = () => usePolling<FamilyMemory>('family');
 
 /** On-demand fact detail (markdown body) for the drawer; cached per id. */
@@ -95,5 +99,19 @@ export function useNodeDetail(nodeId: string | null) {
     queryFn: () => fetchJson(`/api/evolve-node?id=${encodeURIComponent(nodeId!)}`),
     enabled: nodeId !== null,
     staleTime: 60_000,
+  });
+}
+
+/** On-demand versioned report workspace detail. */
+export function useReportWorkspaceDetail(reportId: string | null, version?: string | null) {
+  return useQuery<ReportWorkspaceDetail>({
+    queryKey: ['report-workspace', reportId, version ?? ''],
+    queryFn: () => {
+      const params = new URLSearchParams({ id: reportId! });
+      if (version) params.set('version', version);
+      return fetchJson(`/api/report-workspace?${params.toString()}`);
+    },
+    enabled: reportId !== null,
+    staleTime: 30_000,
   });
 }

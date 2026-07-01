@@ -85,6 +85,8 @@ def _print_section(topic: str) -> None:
         ],
         "supervise": [
             ("iteris monitor", "Primary human interaction entry point: setup, project creation, status, recovery, evolve, and next steps."),
+            ("iteris family status", "Joint sibling North-Star closure: phases, sessions, TASK_POOL frontier."),
+            ("iteris family schedule", "Start open sibling runs up to max_concurrent."),
             ("iteris dashboard", "Browser UI for live logs, facts, and evolve family view."),
             ("iteris status", "Show source, target, active session, facts, tasks, verification, and git state."),
             ("iteris recover", "Reconcile dead sessions and orphaned agent runs after a crash."),

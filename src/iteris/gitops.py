@@ -24,6 +24,9 @@ DEFAULT_GITIGNORE = [
     ".iteris/logs/",
     ".iteris/codex_home/",
     "",
+    "# Report-local build outputs",
+    "reports/*/build/",
+    "",
 ]
 
 
