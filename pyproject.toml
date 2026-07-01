@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iteris"
-version = "0.1.0"
+version = "0.2.0"
 description = "Goal-driven research agent workspace toolkit"
 readme = "README.md"
 license = "Apache-2.0"
@@ -75,6 +75,7 @@ include = ["iteris*"]
     "ui/client/src/**/*.css",
 ]
 "iteris.data" = ["*.md", "templates/*", "locales/*.json", "prompts/monitor/*/*.md"]
+"iteris.reporting" = ["latex_templates/iteris-report/*.sty"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

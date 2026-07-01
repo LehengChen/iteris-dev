@@ -27,10 +27,13 @@ from iteris.project import read_json, require_project
 
 app = typer.Typer(help="Dashboard data contract (consumed by `iteris dashboard`).")
 
-# Evolve/supervision data-contract commands live in their own module.
+# Evolve/supervision and report data-contract commands live in their own modules.
 from iteris.commands.ui_evolve import register as _register_evolve  # noqa: E402
+from iteris.commands.ui_report import register as _register_report  # noqa: E402
 
 _register_evolve(app)
+_register_report(app)
+
 
 def _is_structured(rel: str) -> bool:
     return rel.endswith(".jsonl")

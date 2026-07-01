@@ -57,6 +57,7 @@ def _task_critical_snapshot(lookups: dict[str, Any]) -> dict[str, Any]:
     status = lookups.get("status") if isinstance(lookups.get("status"), dict) else {}
     progress = status.get("math_progress") if isinstance(status.get("math_progress"), dict) else {}
     evolve = lookups.get("evolve_status") if isinstance(lookups.get("evolve_status"), dict) else {}
+    report_status = lookups.get("report_status") if isinstance(lookups.get("report_status"), dict) else {}
     snapshot: dict[str, Any] = {}
     if status:
         snapshot["status"] = {
@@ -89,6 +90,14 @@ def _task_critical_snapshot(lookups: dict[str, Any]) -> dict[str, Any]:
             "math_progress": evolve.get("math_progress"),
             "current_child": evolve.get("current_child"),
         }
+    if report_status:
+        snapshot["report"] = {
+            "reports_dir": report_status.get("reports_dir"),
+            "report_count": report_status.get("report_count"),
+            "recent_reports": report_status.get("recent_reports"),
+            "templates": report_status.get("templates"),
+            "styles": report_status.get("styles"),
+        }
     return snapshot
 
 
@@ -114,7 +123,10 @@ def build_monitor_handoff(
                 "project_role": role,
                 "executor": executor,
                 "user_message": user_message,
-                "context_hints": _context_hints(role),
+                "context_hints": [
+                    *_context_hints(role),
+                    *(["lookups.report_status"] if "report_status" in lookups else []),
+                ],
             },
             indent=2,
             ensure_ascii=False,

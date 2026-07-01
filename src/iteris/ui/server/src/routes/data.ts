@@ -1,5 +1,9 @@
 /** Dashboard data routes: facts graph, activity feed, frontier map, task pool, evolve. */
 import type { FastifyInstance } from 'fastify';
+import { execFile } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import type { ProjectPaths } from '../types.js';
 import { createBridge, type IterisBridge } from '../iteris.js';
 import { cached } from '../cache.js';
@@ -40,6 +44,86 @@ function registerParamRoute(
   });
 }
 
+const REPORT_FILE_NAMES = new Set([
+  'main.pdf',
+  'main.tex',
+  'evidence.json',
+  'references.json',
+  'template.lock.json',
+  'template.assets.json',
+  'author_draft.md',
+  'feedback.md',
+  'REVISION_LOG.md',
+]);
+
+function normalizeProjectRel(raw: string): string | null {
+  const normalized = path.posix.normalize(raw.replace(/\\/g, '/'));
+  if (normalized === '.' || normalized.startsWith('../') || path.posix.isAbsolute(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function resolveReportFile(projectPath: string, raw: string): string | null {
+  const rel = normalizeProjectRel(raw);
+  if (!rel || !rel.startsWith('reports/')) return null;
+  if (!REPORT_FILE_NAMES.has(path.posix.basename(rel))) return null;
+  const full = path.resolve(projectPath, ...rel.split('/'));
+  if (full !== projectPath && !full.startsWith(projectPath + path.sep)) return null;
+  let real: string;
+  let realRoot: string;
+  try {
+    real = fs.realpathSync(full);
+    realRoot = fs.realpathSync(projectPath);
+  } catch {
+    return null;
+  }
+  if (real !== realRoot && !real.startsWith(realRoot + path.sep)) return null;
+  return real;
+}
+
+function contentTypeFor(file: string): string {
+  if (file.endsWith('.pdf')) return 'application/pdf';
+  if (file.endsWith('.json')) return 'application/json; charset=utf-8';
+  if (file.endsWith('.tex') || file.endsWith('.md')) return 'text/plain; charset=utf-8';
+  return 'application/octet-stream';
+}
+
+function execFileJson(args: string[], cwd: string): Promise<Record<string, any>> {
+  return new Promise((resolve, reject) => {
+    execFile('iteris', args, { cwd, maxBuffer: 64 * 1024 * 1024, timeout: 30000 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error(stderr || err.message));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch {
+        reject(new Error('invalid JSON from report export'));
+      }
+    });
+  });
+}
+
+function safeDownloadName(value: unknown): string {
+  const text = typeof value === 'string' && value ? value : 'report-export';
+  return text.replace(/[^A-Za-z0-9._-]/g, '_');
+}
+
+function validSlug(value: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value);
+}
+
+function exportErrorStatus(message: string): number {
+  if (/not found|not been built|not been drafted/i.test(message)) return 404;
+  if (/invalid|unsupported|cannot be inside/i.test(message)) return 400;
+  return 500;
+}
+
+function cleanupDir(dir: string): void {
+  fs.rm(dir, { recursive: true, force: true }, () => undefined);
+}
+
 export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
   const bridge = createBridge(paths.projectPath);
   const project = paths.projectPath;
@@ -55,6 +139,11 @@ export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
     { url: '/api/evolve', ttl: 8000, args: ['tool', 'ui', 'evolve', project, '--json'] },
     { url: '/api/supervision', ttl: 4000, args: ['tool', 'ui', 'supervision', project, '--json', '--limit', '120'] },
     { url: '/api/reports', ttl: 8000, args: ['tool', 'ui', 'reports', project, '--json'] },
+    {
+      url: '/api/report-workspaces',
+      ttl: 8000,
+      args: ['tool', 'ui', 'report-workspaces', project, '--json'],
+    },
     { url: '/api/family', ttl: 8000, args: ['tool', 'ui', 'family', project, '--json'] },
   ];
 
@@ -78,4 +167,84 @@ export function register(fastify: FastifyInstance, paths: ProjectPaths): void {
   registerParamRoute(fastify, bridge, '/api/evolve-node', 'id', (id) => [
     'tool', 'ui', 'node', project, '--node-id', id, '--json',
   ]);
+
+  const reportCache = new Map<string, { at: number; data: unknown }>();
+  fastify.get('/api/report-workspace', async (req, reply) => {
+    const query = req.query as Record<string, unknown>;
+    const id = query?.id;
+    const version = query?.version;
+    if (typeof id !== 'string' || id.length === 0) {
+      return reply.status(400).send({ error: 'missing required query parameter: id' });
+    }
+    const cacheKey = `${id}#${typeof version === 'string' ? version : ''}`;
+    const hit = reportCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < PARAM_TTL_MS) return hit.data;
+    const args = ['tool', 'ui', 'report-workspace', project, '--report-id', id, '--json'];
+    if (typeof version === 'string' && version.length > 0) args.push('--version', version);
+    try {
+      const data = await bridge.json(args);
+      if (reportCache.size >= PARAM_CACHE_MAX && !reportCache.has(cacheKey)) {
+        const oldest = reportCache.keys().next().value;
+        if (oldest !== undefined) reportCache.delete(oldest);
+      }
+      reportCache.set(cacheKey, { at: Date.now(), data });
+      return data;
+    } catch (e: any) {
+      return reply.status(500).send({ error: e.message });
+    }
+  });
+
+  fastify.get('/api/report-file', async (req, reply) => {
+    const rel = (req.query as Record<string, unknown>)?.path;
+    if (typeof rel !== 'string' || rel.length === 0) {
+      return reply.status(400).send({ error: 'missing required query parameter: path' });
+    }
+    const full = resolveReportFile(project, rel);
+    if (!full || !fs.existsSync(full)) return reply.status(404).send({ error: 'Not found' });
+    reply.header('Content-Type', contentTypeFor(full));
+    return reply.send(fs.createReadStream(full));
+  });
+
+  fastify.get('/api/report-export', async (req, reply) => {
+    const query = req.query as Record<string, unknown>;
+    const id = query?.id;
+    const version = query?.version;
+    const kind = query?.kind;
+    const references = query?.references;
+    if (typeof id !== 'string' || id.length === 0) {
+      return reply.status(400).send({ error: 'missing required query parameter: id' });
+    }
+    if (!validSlug(id) || (typeof version === 'string' && version.length > 0 && !validSlug(version))) {
+      return reply.status(400).send({ error: 'invalid report id or version' });
+    }
+    if (kind !== 'pdf' && kind !== 'source-zip') {
+      return reply.status(400).send({ error: 'kind must be pdf or source-zip' });
+    }
+    if (references !== undefined && references !== 'include' && references !== 'omit') {
+      return reply.status(400).send({ error: 'references must be include or omit' });
+    }
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iteris-report-export-'));
+    const output = path.join(tmpDir, kind === 'pdf' ? 'report.pdf' : 'source.zip');
+    let cleanupRegistered = false;
+    const cleanup = () => cleanupDir(tmpDir);
+    reply.raw.once('close', () => {
+      cleanupRegistered = true;
+      cleanup();
+    });
+    const args = ['report', 'export', project, '--report-id', id, '--kind', kind, '--output', output, '--json'];
+    if (typeof version === 'string' && version.length > 0) args.push('--version', version);
+    if (references === 'omit') args.push('--no-references');
+    try {
+      const payload = await execFileJson(args, project);
+      if (!fs.existsSync(output)) throw new Error('export file was not created');
+      const filename = safeDownloadName(payload.download_name);
+      reply.header('Content-Type', typeof payload.content_type === 'string' ? payload.content_type : contentTypeFor(output));
+      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      return reply.send(fs.createReadStream(output));
+    } catch (e: any) {
+      if (!cleanupRegistered) cleanup();
+      const message = String(e.message || e);
+      return reply.status(exportErrorStatus(message)).send({ error: message });
+    }
+  });
 }

@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-blue">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-green">
 </p>
 
@@ -26,7 +26,7 @@ Iteris 是一个面向研究工作的 goal-driven agent workspace toolkit。它�
 | --- | --- |
 | `iteris monitor` | 交互式安装、项目引导、恢复运行和下一步规划。 |
 | `iteris run` | 在项目工作区内运行 Codex 或 Claude Code research loop。 |
-| `iteris dashboard` | 本地 Web UI，用于查看日志、事实、产物和 evolve family 状态。 |
+| `iteris dashboard` | 本地 Web UI，用于查看日志、事实、产物、evolve family 状态与 report 工作区。 |
 
 ## 快速开始
 
@@ -81,6 +81,7 @@ MyProblem/
 │   ├── facts/            # 长期事实与验证状态
 │   └── family/           # family root 上的 evolve 跨项目记忆
 ├── results/              # 最终结果文件
+├── reports/              # 版本化 LaTeX report 工作区
 ├── generalize/           # evolve 状态，例如 EVOLVE.json
 ├── docs/
 │   └── OPERATOR.md       # 项目特定操作说明
@@ -98,7 +99,22 @@ MyProblem/
 iteris dashboard
 ```
 
-首次使用时 dashboard 会安装 UI 依赖，必要时构建 React client，启动本地 loopback Fastify server，并在浏览器中打开日志视图。可以用 `--port` 指定端口，用 `--no-open` 禁止自动打开浏览器。
+首次使用时 dashboard 会安装 UI 依赖，必要时构建 React client，启动本地 loopback Fastify server，并在浏览器中打开日志视图。使用 **Reports** 标签页可查看已创建 `iteris report` 工作区的项目。可以用 `--port` 指定端口，用 `--no-open` 禁止自动打开浏览器。
+
+## Family Closure（并列 sibling 闭合）
+
+当你需要**并行推进一组相关的 North-Star 闭合题**（多个 sibling 项目）时，使用 `iteris family` 做联合调度与共享 verified 事实池。这与 `iteris evolve` 不同——evolve 是从一个 verified 结果出发探索泛化方向。
+
+```bash
+iteris family init . --goal "Literal closure of Problems 2.6–2.8." \
+  --sibling "id=2.6,path=prob-2-6,session=iteris-prob-26,target=results/prob-2-6/answer_verified.md"
+iteris family status .
+iteris family schedule --dry-run .
+iteris family run .    # 后台 supervisor，遵守 max_concurrent
+iteris family export . --from prob-2-6 --fact-id 'fact:...' --usable-by 2.7,2.8
+```
+
+Family wrapper 状态在 `.iteris/FAMILY.json`；每个 sibling 有 `.iteris/family.json` 指回 wrapper。共享池：`memory/family/FAMILY_INDEX.jsonl`。请在 **sibling 路径**上 run，不要直接在 wrapper 根目录 run——或由 `family schedule` 代劳。
 
 ## Evolve Family
 
@@ -116,6 +132,20 @@ iteris evolve stop
 
 在 family root 上运行 `iteris dashboard` 可以查看 evolve tree 和 direction pool。
 
+## Research Reports（研究报告）
+
+将 verified 项目证据整理为版本化 LaTeX/PDF 报告：
+
+```bash
+iteris report status .
+iteris report new . --layout iteris-report --profile theory
+iteris report draft .
+iteris report build .
+iteris report doctor .    # LaTeX 工具链检查
+```
+
+Report 工作区位于 `reports/`。证据保存在项目本地 `evidence.json` 中，引用 fact id 与相对 artifact 路径。
+
 ## 常用命令
 
 | 命令 | 用途 |
@@ -127,7 +157,9 @@ iteris evolve stop
 | `iteris status` | 查看项目状态。 |
 | `iteris recover` | 恢复 dead session 或 orphaned work。 |
 | `iteris dashboard` | 启动本地 Web UI。 |
+| `iteris family ...` | 并列 sibling North-Star 联合调度与共享 verified 事实池。 |
 | `iteris evolve ...` | 管理 generalization family。 |
+| `iteris report ...` | 从 verified 证据起草并构建 LaTeX 报告。 |
 | `iteris help all` | 完整命令指南。 |
 
 更底层的 agent/operator 工具位于 `iteris tool ...`。
