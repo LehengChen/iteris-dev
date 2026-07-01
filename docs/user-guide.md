@@ -37,6 +37,25 @@ Optional: put reference PDFs in `references/` after `new`.
 - `iteris recover` — after a crash: reconcile dead sessions and orphaned tasks
 - `iteris stop` — stop the worker session
 - `iteris review` — bundle artifacts for human review
+- `iteris report status/new/draft/build` — create a versioned LaTeX report from verified project evidence
+
+Report workspaces live under `reports/`. The MVP layout is `iteris-report`,
+a generic Apache-2.0 LaTeX report layout maintained by this project.
+
+## Family closure: parallel sibling North-Star runs
+
+Use `iteris family` when you need to **close several related original problems
+in parallel** (siblings), with shared verified-fact pool and joint scheduling.
+This is distinct from evolve (which generalizes one verified result).
+
+```bash
+iteris family init . --goal "Literal closure of Problems 2.6–2.8." \
+  --sibling "id=2.6,path=prob-2-6,session=iteris-prob-26,target=results/prob-2-6/answer_verified.md"
+iteris family status .
+iteris family schedule --dry-run .
+iteris family run .
+iteris family export . --from prob-2-6 --fact-id 'fact:...' --usable-by 2.7,2.8
+```
 
 ## Evolve: generalize across a project family
 

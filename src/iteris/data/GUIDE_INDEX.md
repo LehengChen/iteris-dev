@@ -21,9 +21,11 @@ Iteris is a goal-driven research agent workspace. A human usually starts with
 | Command | When to use |
 |---------|-------------|
 | `iteris monitor` | Primary human interaction entry: setup help, project creation, project state, recovery, evolve, next steps |
-| `iteris dashboard` | Live logs, facts graph, evolve family tree |
+| `iteris dashboard` | Live logs, facts graph, evolve family tree, report workspaces |
 | `iteris new --source …` | Create a project (monitor can guide this) |
 | `iteris run` | Start the worker agent loop |
+| `iteris family init/status/schedule/…` | Joint sibling North-Star closure scheduling |
+| `iteris report status/new/build/…` | Draft and build LaTeX reports from verified evidence |
 | `iteris evolve init/run/status/…` | Manage a family of generalization projects |
 | `iteris doctor` | Environment and project health check |
 
