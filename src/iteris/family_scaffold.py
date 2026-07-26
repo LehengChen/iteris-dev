@@ -17,6 +17,44 @@ from iteris.family import (
 from iteris.project import is_project, now_iso, read_json, session_slug, write_json
 
 
+def normalize_sibling_entry(sibling: dict[str, Any], *, index: int) -> dict[str, Any]:
+    """Accept ``id`` as an alias for ``sibling_id`` and require one of them.
+
+    The ``--sibling`` CLI spec spells this key ``id=`` (see
+    ``parse_sibling_spec``), so a manifest written to match the documented CLI
+    surface would silently produce ``sibling_id: None``. The family then
+    scaffolded fine but every id-addressed command failed far from the cause:
+    ``family start --sibling 2.15`` reported ``unknown sibling id: 2.15``.
+    Accept both spellings, and fail loudly when neither is present.
+    """
+    entry = dict(sibling)
+    if not entry.get("sibling_id") and entry.get("id"):
+        entry["sibling_id"] = entry["id"]
+    entry.pop("id", None)
+    if not entry.get("sibling_id"):
+        raise ValueError(f"sibling #{index + 1} missing sibling_id (or id): {entry.get('path') or '(no path)'}")
+    entry["sibling_id"] = str(entry["sibling_id"])
+    if not entry.get("path"):
+        raise ValueError(f"sibling {entry['sibling_id']} missing path")
+    return entry
+
+
+def normalize_sibling_entries(siblings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize every sibling and reject duplicate ids.
+
+    Two siblings sharing an id would make ``sibling_by_id`` resolve to the
+    first and leave the second unreachable.
+    """
+    normalized = [normalize_sibling_entry(item, index=i) for i, item in enumerate(siblings)]
+    seen: set[str] = set()
+    for entry in normalized:
+        sid = entry["sibling_id"]
+        if sid in seen:
+            raise ValueError(f"duplicate sibling_id: {sid}")
+        seen.add(sid)
+    return normalized
+
+
 def parse_sibling_spec(spec: str) -> dict[str, Any]:
     """Parse CLI sibling spec: id=2.6,path=child,session=...,target=...,gaps=A|B."""
     parts: dict[str, Any] = {}
@@ -125,8 +163,7 @@ def perform_family_init(
     _ensure_family_dirs(family_root)
 
     normalized: list[dict[str, Any]] = []
-    for sibling in siblings:
-        entry = dict(sibling)
+    for entry in normalize_sibling_entries(siblings):
         rel_path = Path(str(entry["path"]))
         project = (family_root / rel_path).resolve()
         if adopt_symlinks and not project.exists():
@@ -193,6 +230,8 @@ def perform_family_new(
 
     if not resolved_siblings:
         raise ValueError("at least one sibling is required")
+
+    resolved_siblings = normalize_sibling_entries(resolved_siblings)
 
     family_id = str(manifest.get("family_id") or _default_family_id(family_root))
     schedule = manifest.get("schedule") if isinstance(manifest.get("schedule"), dict) else {}
