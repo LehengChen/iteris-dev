@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-blue">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-green">
 </p>
 
@@ -29,7 +29,7 @@ It is built around three everyday surfaces:
 | --- | --- |
 | `iteris monitor` | Interactive setup, project guidance, recovery, and next-step planning. |
 | `iteris run` | The main Codex or Claude Code research loop inside a project workspace. |
-| `iteris dashboard` | Local web UI for logs, facts, artifacts, and evolve-family state. |
+| `iteris dashboard` | Local web UI for logs, facts, artifacts, evolve-family state, and report workspaces. |
 
 ## Quick Start
 
@@ -92,6 +92,7 @@ MyProblem/
 │   ├── facts/            # Durable facts and verification state
 │   └── family/           # Evolve-family memory, on family roots
 ├── results/              # Final answer artifacts
+├── reports/              # Versioned LaTeX report workspaces
 ├── generalize/           # Evolve state such as EVOLVE.json
 ├── docs/
 │   └── OPERATOR.md       # Project-specific operator notes
@@ -112,7 +113,8 @@ iteris dashboard
 
 The dashboard installs UI dependencies on first use, builds the React client
 when needed, starts a loopback Fastify server, and opens the log view in your
-browser. Use `--port` to choose a preferred port and `--no-open` to avoid
+browser. Use the **Reports** tab to inspect report workspaces on projects that
+use `iteris report`. Use `--port` to choose a preferred port and `--no-open` to avoid
 opening a browser.
 
 ## Evolve Families
@@ -133,6 +135,42 @@ iteris evolve stop
 Use `iteris dashboard` on the family root to inspect the evolve tree and
 direction pool.
 
+## Family Closure
+
+When you need to close several **related North-Star problems in parallel**
+(sibling projects), use `iteris family` for joint scheduling and a shared
+verified-fact pool. This is distinct from `iteris evolve`, which generalizes one
+verified result into new directions.
+
+```bash
+iteris family init . --goal "Literal closure of Problems 2.6–2.8." \
+  --sibling "id=2.6,path=prob-2-6,session=iteris-prob-26,target=results/prob-2-6/answer_verified.md"
+iteris family status .
+iteris family schedule --dry-run .
+iteris family run .    # detached supervisor; respects --max-concurrent
+iteris family export . --from prob-2-6 --fact-id 'fact:...' --usable-by 2.7,2.8
+```
+
+Family wrapper state lives in `.iteris/FAMILY.json`; each sibling carries
+`.iteris/family.json` pointing back to the wrapper. Shared pool:
+`memory/family/FAMILY_INDEX.jsonl`. Run workers on **sibling paths**, not the
+wrapper root — or let `family schedule` start them.
+
+## Research Reports
+
+Turn verified project evidence into versioned LaTeX/PDF reports:
+
+```bash
+iteris report status .
+iteris report new . --layout iteris-report --profile theory
+iteris report draft .
+iteris report build .
+iteris report doctor .    # LaTeX toolchain check
+```
+
+Report workspaces live under `reports/`. Evidence stays in project-local
+`evidence.json` with fact ids and relative artifact paths.
+
 ## Common Commands
 
 | Command | Use |
@@ -145,6 +183,8 @@ direction pool.
 | `iteris recover` | Reconcile dead sessions or orphaned work. |
 | `iteris dashboard` | Launch the local web UI. |
 | `iteris evolve ...` | Manage generalization families. |
+| `iteris family ...` | Joint sibling North-Star scheduling and shared verified-fact pool. |
+| `iteris report ...` | Draft and build LaTeX reports from verified evidence. |
 | `iteris help all` | Full command guide. |
 
 Lower-level commands used by agents and operators live under `iteris tool ...`.

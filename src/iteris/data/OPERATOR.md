@@ -67,6 +67,32 @@ Family state lives in `generalize/EVOLVE.json` and `memory/family/`. The evolve
 supervisor seeds child projects and schedules parallel workers within
 `--max-concurrent` and `--budget-hours`.
 
+## Family closure: parallel sibling North-Star runs
+
+Use `iteris family` when you need to **close several related original problems
+in parallel** (siblings), with shared verified-fact pool and joint scheduling.
+This is distinct from evolve (which generalizes one verified result).
+
+```bash
+# Register an existing sibling layout:
+iteris family init . --goal "Literal closure of Problems 2.6–2.8." \
+  --sibling "id=2.6,path=prob-2-6,session=iteris-prob-26,target=results/prob-2-6/answer_verified.md"
+
+iteris family status .
+iteris family schedule --dry-run .
+iteris family start --sibling 2.8
+iteris family run .                 # detached supervisor
+
+# Export a verified sibling fact for other siblings (re-verify before cite):
+iteris family export . --from prob-2-6 --fact-id 'fact:...' --usable-by 2.7,2.8
+iteris family pool .
+```
+
+Family wrapper state lives in `.iteris/FAMILY.json`; each sibling carries
+`.iteris/family.json` pointing back to the wrapper. Shared pool:
+`memory/family/FAMILY_INDEX.jsonl`. Run workers on **sibling paths**, not the
+wrapper root — or let `family schedule` start them.
+
 ## When something looks stuck
 
 1. `iteris status` — is the session alive?

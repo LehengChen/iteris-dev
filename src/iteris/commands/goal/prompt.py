@@ -76,6 +76,29 @@ def build_generalization_block(generalization: dict) -> str:
     )
 
 
+def build_family_closure_context_lines(root: Path) -> list[str]:
+    try:
+        from iteris.family import read_family_marker
+        from iteris.family_pool import build_pool_context_block
+    except ImportError:
+        return []
+    marker = read_family_marker(root)
+    if not marker:
+        return []
+    family_root = Path(str(marker.get("family_root") or ""))
+    if not family_root.is_dir():
+        return []
+    sibling_id = str(marker.get("sibling_id") or "")
+    lines = [
+        "- This project belongs to a family closure group. Use `iteris tool memory search` for `[family]` rows; re-verify locally before citing any pool lead.\n"
+    ]
+    block = build_pool_context_block(family_root, sibling_id=sibling_id or None)
+    if block:
+        indented = "\n".join(f"  {line}" for line in block.splitlines())
+        lines.append(indented + "\n")
+    return lines
+
+
 def build_project_context_lines(root: Path) -> list[str]:
     """Goal-contract lines derived from project state set up at `iteris new` time.
 
@@ -100,6 +123,7 @@ def build_project_context_lines(root: Path) -> list[str]:
                 + (f"Read `{summary}` before planning. " if summary else "")
                 + "Do not re-explore a lane the boundary marks dead unless you have a genuinely new idea, and re-verify any inherited fact locally before making it load-bearing in a proof or assembly.\n"
             )
+    lines.extend(build_family_closure_context_lines(root))
     return lines
 
 

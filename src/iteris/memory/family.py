@@ -46,7 +46,10 @@ def inputs_path(root: Path) -> Path:
 
 
 def is_family_root(project_root: Path) -> bool:
-    return family_dir(project_root).is_dir()
+    root = project_root.resolve()
+    if (root / ".iteris" / "FAMILY.json").is_file():
+        return True
+    return family_dir(root).is_dir()
 
 
 def resolve_family_root(project_root: Path) -> Path | None:
@@ -54,16 +57,24 @@ def resolve_family_root(project_root: Path) -> Path | None:
 
     A project is in family scope when its lineage carries ``evolve_root``
     (descendant) or when it is itself a root with a ``memory/family/`` dir.
-    Reads ``generalize.json`` directly to stay import-light for search.
+    Family closure siblings also carry ``.iteris/family.json`` pointing at a
+    wrapper root with ``.iteris/FAMILY.json``. Reads marker/lineage files
+    directly to stay import-light for search.
     """
-    lineage = read_json(project_root / ".iteris" / "generalize.json", default={})
+    root = project_root.resolve()
+    marker = read_json(root / ".iteris" / "family.json", default={})
+    if isinstance(marker, dict) and marker.get("family_root"):
+        candidate = Path(str(marker["family_root"])).resolve()
+        if is_family_root(candidate):
+            return candidate
+    lineage = read_json(root / ".iteris" / "generalize.json", default={})
     entry = lineage.get("evolve_root") if isinstance(lineage, dict) else None
     if isinstance(entry, dict) and entry.get("path"):
         candidate = Path(str(entry["path"]))
         if is_family_root(candidate):
             return candidate
-    if is_family_root(project_root):
-        return project_root
+    if is_family_root(root):
+        return root
     return None
 
 
