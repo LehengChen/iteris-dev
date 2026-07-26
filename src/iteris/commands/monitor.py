@@ -12,6 +12,7 @@ from typing import Any
 import typer
 
 from iteris import log
+from iteris.codex_logs import build_child_env
 from iteris.commands.goal import build_codex_command
 from iteris.executors import EXECUTOR_CODEX, build_claude_command, headless_home_env, resolve_executor
 from iteris.guide.context import build_monitor_handoff
@@ -84,7 +85,15 @@ def _session_command(*, executor: str, cwd: Path, initial_message: str) -> list[
 
 
 def _session_env_updates(executor: str) -> dict[str, str]:
-    return headless_home_env(executor)
+    env_updates = headless_home_env(executor)
+    # Interactive monitor sessions invoke Iteris again for read-only lookups and
+    # user-approved project actions. Pin the console-scripts directory just as
+    # worker and verification sessions do, because Codex tool shells may reset
+    # PATH and otherwise lose a user-local Iteris installation.
+    path_value = build_child_env({}).get("PATH")
+    if path_value:
+        env_updates["PATH"] = path_value
+    return env_updates
 
 
 def _write_handoff(

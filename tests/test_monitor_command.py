@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -41,6 +44,8 @@ def test_monitor_message_json_writes_handoff(tmp_path, monkeypatch):
     assert payload["executor"] == "codex"
     assert payload["command"][0].endswith("codex")
     assert "--yolo" in payload["command"]
+    scripts_dir = str(Path(sys.executable).parent)
+    assert payload["env_updates"]["PATH"].split(os.pathsep).count(scripts_dir) == 1
     assert "assistant" not in payload
     handoff = tmp_path / ".iteris" / "monitor" / "handoff.md"
     assert handoff.exists()
@@ -88,6 +93,8 @@ def test_monitor_claude_launch_passes_sandbox_env(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert "--dangerously-skip-permissions" in captured["command"]
     assert captured["kwargs"]["env"]["IS_SANDBOX"] == "1"
+    scripts_dir = str(Path(sys.executable).parent)
+    assert captured["kwargs"]["env"]["PATH"].split(os.pathsep).count(scripts_dir) == 1
 
 
 def test_monitor_long_handoff_uses_file_reference_in_initial_message(tmp_path, monkeypatch):
