@@ -11,7 +11,7 @@ import time
 
 from iteris.gitops import ensure_gitignore
 from iteris.project import slugify
-from iteris.tmux import capture_pane
+from iteris.tmux import capture_pane, tmux_target
 from pathlib import Path
 from typing import Sequence
 from iteris.commands.goal.logs import _mtime_or_zero
@@ -87,28 +87,28 @@ def build_tmux_command(session_name: str, shell_cmd: str, *, detached: bool = Fa
     cmd = ["tmux", "new-session"]
     if detached:
         cmd.append("-d")
-    cmd.extend(["-s", session_name, shell_cmd])
+    cmd.extend(["-s", tmux_target(session_name), shell_cmd])
     return cmd
 
 
 def build_tmux_shell_command(session_name: str) -> list[str]:
-    return ["tmux", "new-session", "-d", "-s", session_name]
+    return ["tmux", "new-session", "-d", "-s", tmux_target(session_name)]
 
 
 def build_send_keys_command(session_name: str, shell_cmd: str) -> list[str]:
-    return ["tmux", "send-keys", "-t", session_name, shell_cmd, "Enter"]
+    return ["tmux", "send-keys", "-t", tmux_target(session_name), shell_cmd, "Enter"]
 
 
 def build_load_prompt_buffer_command(session_name: str, prompt_path: Path, *, buffer_name: str = "iteris_goal_prompt") -> list[str]:
-    return ["tmux", "load-buffer", "-t", session_name, "-b", buffer_name, str(prompt_path)]
+    return ["tmux", "load-buffer", "-t", tmux_target(session_name), "-b", buffer_name, str(prompt_path)]
 
 
 def build_paste_prompt_buffer_command(session_name: str, *, buffer_name: str = "iteris_goal_prompt") -> list[str]:
-    return ["tmux", "paste-buffer", "-t", session_name, "-b", buffer_name]
+    return ["tmux", "paste-buffer", "-t", tmux_target(session_name), "-b", buffer_name]
 
 
 def build_submit_prompt_command(session_name: str) -> list[str]:
-    return ["tmux", "send-keys", "-t", session_name, "Enter"]
+    return ["tmux", "send-keys", "-t", tmux_target(session_name), "Enter"]
 
 
 _CODEX_HOME_LINK_FILES = ("auth.json", "config.toml", "version.json", "installation_id")

@@ -13,7 +13,7 @@ import typer
 from iteris import log
 from iteris.messages import MessageError, ack as ack_message, list_messages, send as send_message
 from iteris.project import require_project
-from iteris.tmux import capture_pane, tmux_session_alive
+from iteris.tmux import capture_pane, tmux_session_alive, tmux_target
 
 app = typer.Typer(help="Send, list, and acknowledge structured project messages.")
 
@@ -83,7 +83,7 @@ def _verify_submitted(session_name: str, msg_id: str) -> bool:
     if not _composer_holds(session_name, msg_id):
         return True
     subprocess.run(
-        ["tmux", "send-keys", "-t", session_name, "Enter"],
+        ["tmux", "send-keys", "-t", tmux_target(session_name), "Enter"],
         check=True,
         capture_output=True,
         text=True,
@@ -122,7 +122,7 @@ def notify_run_session(recipient: Path, message: dict[str, Any]) -> dict[str, An
         )
         # 1) Type the notice literally (-l), so its content is never read as keys.
         subprocess.run(
-            ["tmux", "send-keys", "-t", session_name, "-l", line],
+            ["tmux", "send-keys", "-t", tmux_target(session_name), "-l", line],
             check=True,
             capture_output=True,
             text=True,
@@ -131,7 +131,7 @@ def notify_run_session(recipient: Path, message: dict[str, Any]) -> dict[str, An
         # 2) Pause so the composer settles, then submit with a SEPARATE Enter.
         time.sleep(_ENTER_DELAY_SECONDS)
         subprocess.run(
-            ["tmux", "send-keys", "-t", session_name, "Enter"],
+            ["tmux", "send-keys", "-t", tmux_target(session_name), "Enter"],
             check=True,
             capture_output=True,
             text=True,

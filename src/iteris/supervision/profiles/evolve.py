@@ -42,6 +42,7 @@ from iteris.memory.family import (
     upsert_family_entries,
 )
 from iteris.project import now_iso, now_stamp, read_json, session_slug, slugify
+from iteris.tmux import tmux_target
 from iteris.supervision.actions import CallableActuator, send_message_actuator
 from iteris.supervision.contracts import Action, JudgmentContract
 from iteris.supervision.engine import Profile
@@ -1174,7 +1175,7 @@ def _reap_sessions(action: Action, ctx: SupervisionContext) -> dict[str, Any]:
 def _kill_session(session: str) -> bool:
     try:
         proc = subprocess.run(
-            ["tmux", "kill-session", "-t", session],
+            ["tmux", "kill-session", "-t", tmux_target(session)],
             capture_output=True,
             timeout=15,
         )

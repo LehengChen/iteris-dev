@@ -24,6 +24,7 @@ from iteris.commands.goal import (
     build_project_context_lines,
     build_shell_command,
     build_tmux_shell_command,
+    tmux_target,
     accept_codex_trust_prompt,
     ensure_codex_project_trusted,
     goal_codex_home_dir,
@@ -192,7 +193,7 @@ def run(
             "target_artifact": target_artifact,
             "prompt_file": str(prompt_path.relative_to(root)),
             "mode": "print",
-            "command": shell_cmd if foreground else shlex.join(["tmux", "new-session", "-d", "-s", session_name, shell_cmd]),
+            "command": shell_cmd if foreground else shlex.join(["tmux", "new-session", "-d", "-s", tmux_target(session_name), shell_cmd]),
         }
         if json_output:
             typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -252,7 +253,7 @@ def run(
     _prepare_agent_home()
     launch_tmux_cmd = build_tmux_shell_command(session_name)
     pipe_cmd = build_pipe_pane_command(session_name, log_paths["pane_log"])
-    respawn_cmd = ["tmux", "respawn-pane", "-t", session_name, "-k", shell_cmd]
+    respawn_cmd = ["tmux", "respawn-pane", "-t", tmux_target(session_name), "-k", shell_cmd]
     meta = {
         "schema_version": "iteris.goal_launch.v0",
         "created_at": now_iso(),

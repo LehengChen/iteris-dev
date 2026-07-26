@@ -31,6 +31,7 @@ from iteris.family import (
 from iteris.family_pool import export_verified_fact, list_pool_entries
 from iteris.family_scaffold import parse_sibling_spec, perform_family_init, perform_family_new
 from iteris.project import is_project, now_iso, read_json
+from iteris.tmux import tmux_target
 
 app = typer.Typer(help="Joint scheduling and shared verified pool for sibling North-Star closure projects.")
 
@@ -286,7 +287,7 @@ def run_cmd(
         f"{shlex.quote(sys.executable)} -m iteris.cli family run {shlex.quote(str(family_root))} "
         f"--foreground --tick-seconds {tick_seconds}"
     )
-    subprocess.run(["tmux", "new-session", "-d", "-s", session_name, inner], check=True)
+    subprocess.run(["tmux", "new-session", "-d", "-s", tmux_target(session_name), inner], check=True)
     payload = {"mode": "tmux", "session_name": session_name, "tick_seconds": tick_seconds}
     if json_output:
         typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))

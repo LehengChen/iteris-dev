@@ -11,7 +11,7 @@ from typing import Any
 from iteris.project import is_project, now_iso, read_json, session_slug, write_json
 from iteris.supervision.profiles.evolve import goal_success_verified, principled_stop_certified
 from iteris.tasks import load_task_pool, select_ready_tasks
-from iteris.tmux import tmux_session_alive
+from iteris.tmux import tmux_session_alive, tmux_target
 
 FAMILY_STATE_SCHEMA = "iteris.family_state.v1"
 FAMILY_MEMBER_SCHEMA = "iteris.family_member.v0"
@@ -373,7 +373,7 @@ def stop_sibling_session(family_root: Path, sibling: dict[str, Any]) -> dict[str
     session_name = sibling_session_name(family_root, sibling)
     stopped = False
     if session_live(session_name):
-        subprocess.run(["tmux", "kill-session", "-t", session_name], check=False)
+        subprocess.run(["tmux", "kill-session", "-t", tmux_target(session_name)], check=False)
         stopped = True
     return {"sibling_id": sibling.get("sibling_id"), "session": session_name, "stopped": stopped}
 
@@ -383,7 +383,7 @@ def stop_watchdog_session(family_root: Path, state: dict[str, Any] | None = None
     session_name = watchdog_session_name(family_root, state)
     stopped = False
     if session_live(session_name):
-        subprocess.run(["tmux", "kill-session", "-t", session_name], check=False)
+        subprocess.run(["tmux", "kill-session", "-t", tmux_target(session_name)], check=False)
         stopped = True
     return {"session": session_name, "stopped": stopped}
 

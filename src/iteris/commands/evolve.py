@@ -26,6 +26,7 @@ from iteris.evolve import (
     write_state,
 )
 from iteris.project import now_iso, require_project
+from iteris.tmux import tmux_target
 
 app = typer.Typer(help="Budget-bounded generalization of a verified result across a project family.")
 
@@ -174,7 +175,7 @@ def run(
         f"{env_prefix}{shlex.quote(sys.executable)} -m iteris.cli evolve run {shlex.quote(str(root))} "
         f"--foreground --tick-seconds {tick_seconds}{exec_flags}"
     )
-    subprocess.run(["tmux", "new-session", "-d", "-s", session_name, inner], check=True)
+    subprocess.run(["tmux", "new-session", "-d", "-s", tmux_target(session_name), inner], check=True)
     payload = {"mode": "tmux", "session_name": session_name, "tick_seconds": tick_seconds, "executor": executor_name}
     if json_output:
         typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -339,7 +340,7 @@ def stop(
     session_name = evolve_session_name(root)
     stopped = False
     if _tmux_session_exists(session_name):
-        subprocess.run(["tmux", "kill-session", "-t", session_name], check=False)
+        subprocess.run(["tmux", "kill-session", "-t", tmux_target(session_name)], check=False)
         stopped = True
     try:
         unseeded = unseeded_open(read_state(root))
@@ -375,7 +376,7 @@ def _substance_summary(root: Path) -> dict[str, int]:
 def _tmux_session_exists(session_name: str) -> bool:
     try:
         proc = subprocess.run(
-            ["tmux", "has-session", "-t", session_name], capture_output=True, text=True, timeout=10
+            ["tmux", "has-session", "-t", tmux_target(session_name)], capture_output=True, text=True, timeout=10
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False

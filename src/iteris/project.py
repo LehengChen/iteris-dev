@@ -55,6 +55,24 @@ def slugify(text: str, limit: int = 80) -> str:
     return (out or "item")[:limit]
 
 
+def tmux_safe_name(name: str) -> str:
+    """Make ``name`` survive a tmux ``-t`` target lookup unchanged.
+
+    tmux target syntax reads ``.`` as a pane separator and ``:`` as a window
+    separator, so a project directory like ``2.15`` produced a session that
+    could be created but never addressed again: ``new-session -s iteris-2.15``
+    silently STORED the session as ``iteris-2_15``, and every later
+    ``-t iteris-2.15`` failed with ``can't find pane: 15`` — leaving a live
+    worker Iteris could not attach, log, message, or stop.
+
+    Mapping both characters to ``_`` matches what tmux does internally (it
+    reports ``duplicate session`` for ``2.15`` when ``2_15`` exists), so this
+    folds no two names together that tmux would have kept apart. Idempotent,
+    so it is safe to apply at more than one layer.
+    """
+    return name.replace(".", "_").replace(":", "_")
+
+
 def session_slug(name: str, limit: int = 30) -> str:
     """Collision-proof slug for tmux session names.
 
@@ -63,8 +81,12 @@ def session_slug(name: str, limit: int = 30) -> str:
     verified sibling against the new worker's live session and reaped it.
     Names short enough to survive untruncated keep their historical form;
     longer names trade the last 7 chars for a stable digest of the full name.
+
+    Dots and colons are folded to ``_`` (see ``tmux_safe_name``) BEFORE the
+    length check, so the digest is computed over the final characters and
+    stays stable for a given project name.
     """
-    full = slugify(name, 10_000)
+    full = tmux_safe_name(slugify(name, 10_000))
     if len(full) <= limit:
         return full
     digest = hashlib.sha1(full.encode("utf-8")).hexdigest()[:6]

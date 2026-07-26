@@ -14,10 +14,27 @@ import time
 from pathlib import Path
 
 
+def tmux_target(session_name: str) -> str:
+    """Normalize a session name so tmux ``-t`` addresses the session we mean.
+
+    In tmux target syntax ``.`` separates a pane and ``:`` a window, so
+    ``-t iteris-2.15`` is parsed as pane 15 of session ``iteris-2`` and fails
+    with ``can't find pane: 15``. tmux itself stores such a session with both
+    characters replaced by ``_``, so normalizing here addresses exactly the
+    session tmux created.
+
+    ``session_slug`` already applies this to every Iteris-generated name; this
+    is the second line of defense for names a user passes via ``--session``.
+    Kept local (not imported from ``iteris.project``) to preserve this module's
+    dependency-free character, and idempotent so double application is safe.
+    """
+    return session_name.replace(".", "_").replace(":", "_")
+
+
 def tmux_session_exists(session_name: str) -> bool:
     try:
         result = subprocess.run(
-            ["tmux", "has-session", "-t", session_name],
+            ["tmux", "has-session", "-t", tmux_target(session_name)],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -41,7 +58,7 @@ def tmux_session_alive(session_name: str) -> bool:
 def capture_pane(session_name: str, *, lines: int = 200) -> str:
     try:
         result = subprocess.run(
-            ["tmux", "capture-pane", "-pt", session_name, "-S", f"-{lines}"],
+            ["tmux", "capture-pane", "-pt", tmux_target(session_name), "-S", f"-{lines}"],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -55,22 +72,30 @@ def capture_pane(session_name: str, *, lines: int = 200) -> str:
 
 
 def build_pipe_pane_command(session_name: str, pane_log: Path) -> list[str]:
-    return ["tmux", "pipe-pane", "-o", "-t", session_name, f"cat >> {shlex.quote(str(pane_log))}"]
+    return [
+        "tmux",
+        "pipe-pane",
+        "-o",
+        "-t",
+        tmux_target(session_name),
+        f"cat >> {shlex.quote(str(pane_log))}",
+    ]
 
 
 def build_interrupt_command(session_name: str) -> list[str]:
-    return ["tmux", "send-keys", "-t", session_name, "C-c"]
+    return ["tmux", "send-keys", "-t", tmux_target(session_name), "C-c"]
 
 
 def build_kill_session_command(session_name: str) -> list[str]:
-    return ["tmux", "kill-session", "-t", session_name]
+    return ["tmux", "kill-session", "-t", tmux_target(session_name)]
 
 
 def tmux_attach_command(session_name: str, *, env: dict[str, str] | None = None) -> list[str]:
     source_env = os.environ if env is None else env
+    target = tmux_target(session_name)
     if source_env.get("TMUX"):
-        return ["tmux", "switch-client", "-t", session_name]
-    return ["tmux", "attach-session", "-t", session_name]
+        return ["tmux", "switch-client", "-t", target]
+    return ["tmux", "attach-session", "-t", target]
 
 
 def attach_tmux_session(session_name: str) -> None:

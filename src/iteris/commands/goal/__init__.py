@@ -26,6 +26,7 @@ from iteris.tmux import (  # noqa: F401  (re-exported for existing import sites)
     stop_tmux_session,
     tmux_attach_command,
     tmux_session_exists,
+    tmux_target,
 )
 from iteris.gitops import GitError, checkpoint as git_checkpoint, ensure_gitignore, status as git_status
 from iteris.project import now_iso, now_stamp, read_json, require_project, session_slug, slugify, write_json

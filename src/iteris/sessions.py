@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from iteris.project import is_project, session_slug, slugify
+from iteris.tmux import tmux_target
 
 TERMINAL_PHASES = {"goal_success_verified", "verified", "complete"}
 
@@ -38,7 +39,7 @@ def list_tmux_sessions() -> list[str]:
 def kill_tmux_session(session_name: str) -> bool:
     try:
         proc = subprocess.run(
-            ["tmux", "kill-session", "-t", session_name],
+            ["tmux", "kill-session", "-t", tmux_target(session_name)],
             capture_output=True,
             text=True,
             timeout=10,

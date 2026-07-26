@@ -30,6 +30,7 @@ from iteris.commands.goal import (
     prepare_codex_home,
     prune_goal_runs,
     tmux_session_exists,
+    tmux_target,
 )
 from iteris.codex_logs import build_child_env
 from iteris.executors import (
@@ -204,7 +205,7 @@ def analyze(
     if print_only or binary is None:
         payload["mode"] = "print"
         payload["command"] = shell_cmd if foreground else shlex.join(
-            ["tmux", "new-session", "-d", "-s", session_name, shell_cmd]
+            ["tmux", "new-session", "-d", "-s", tmux_target(session_name), shell_cmd]
         )
         if json_output:
             typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -245,7 +246,7 @@ def analyze(
     _prepare_agent_home()
     launch_tmux_cmd = build_tmux_shell_command(session_name)
     pipe_cmd = build_pipe_pane_command(session_name, log_paths["pane_log"])
-    respawn_cmd = ["tmux", "respawn-pane", "-t", session_name, "-k", shell_cmd]
+    respawn_cmd = ["tmux", "respawn-pane", "-t", tmux_target(session_name), "-k", shell_cmd]
     meta = {
         "schema_version": "iteris.generalize_analyze_launch.v0",
         "created_at": now_iso(),
