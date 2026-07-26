@@ -53,7 +53,7 @@ def test_source_export_rejects_output_inside_version_dir(tmp_path: Path) -> None
         export_report(root, report_id="demo-report", kind="source-zip", output=output)
 
 
-def test_report_export_cli_prints_custom_output_path(tmp_path: Path) -> None:
+def test_report_export_cli_prints_custom_output_path(tmp_path: Path, plain) -> None:
     root = _export_fixture(tmp_path)
     output = tmp_path / "custom-source.zip"
 
@@ -73,7 +73,9 @@ def test_report_export_cli_prints_custom_output_path(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0, result.output
-    assert str(output) in result.output
+    # Rich styles the parent directory and filename separately and may wrap
+    # between them, so compare against normalized output rather than raw.
+    assert str(output) in plain(result.output)
     assert output.exists()
 
 

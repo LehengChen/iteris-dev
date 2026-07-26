@@ -374,14 +374,15 @@ def test_report_lookup_triggered_by_latex_keywords(tmp_path):
     assert "latex" not in lookups["report_status"]
 
 
-def test_report_missing_project_explains_new(tmp_path):
+def test_report_missing_project_explains_new(tmp_path, plain):
     result = CliRunner().invoke(app, ["report", "status", str(tmp_path), "--json"])
 
     assert result.exit_code != 0
-    assert "not an Iteris project" in result.output
-    assert "new" in result.output
-    assert "--source" in result.output
-    assert "Traceback" not in result.output
+    output = plain(result.output)
+    assert "not an Iteris project" in output
+    # The actionable part of the hint: which command to run, with which option.
+    assert "iteris new --source" in output
+    assert "Traceback" not in output
 
 
 def test_report_latex_environment_contract(monkeypatch):
